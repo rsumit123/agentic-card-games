@@ -17,6 +17,7 @@ The architecture must support later rule modules such as Uno and Go Fish without
 - Every human and AI action has a server-owned deadline. On disconnection, a player can reconnect until their action deadline. A missing or invalid action at expiry auto-folds, even if checking would be legal.
 - A table is a casual session, not a tournament: there are no rebuys or eliminations. A player with zero chips remains in the session. When a session ends, it shows all seats ranked by final chip count, including zero-chip seats.
 - If the host leaves between hands, host control transfers to the longest-present remaining human. AI seats never become hosts. If every human explicitly leaves the room, the server cancels the table.
+- Zero-chip seats remain in the roster and final ranking but spectate future hands. The host may end a session only between hands. Otherwise, play continues while at least two seats have chips and ends automatically when fewer than two remain. A host departure during a hand takes effect after that hand completes.
 
 ## Deployment architecture
 
