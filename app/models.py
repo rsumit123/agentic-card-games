@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -17,7 +17,7 @@ class User(Base):
     google_subject: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(320), default="")
     display_name: Mapped[str] = mapped_column(String(255), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     seats: Mapped[list["Seat"]] = relationship(back_populates="user")
 
@@ -35,7 +35,7 @@ class Table(Base):
     status: Mapped[str] = mapped_column(String(32), default="lobby")
     join_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     current_revision: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     seats: Mapped[list["Seat"]] = relationship(back_populates="table", cascade="all, delete-orphan")
     hands: Mapped[list["Hand"]] = relationship(back_populates="table", cascade="all, delete-orphan")
@@ -66,7 +66,7 @@ class Hand(Base):
     status: Mapped[str] = mapped_column(String(32), default="active")
     pre_hand_balances: Mapped[dict] = mapped_column(JSON, default=dict)
     state_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -82,6 +82,6 @@ class RoomEvent(Base):
     event_type: Mapped[str] = mapped_column(String(64))
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     table: Mapped[Table] = relationship(back_populates="events")
