@@ -19,6 +19,10 @@ The architecture must support later rule modules such as Uno and Go Fish without
 - If the host leaves between hands, host control transfers to the longest-present remaining human. AI seats never become hosts. If every human explicitly leaves the room, the server cancels the table.
 - Zero-chip seats remain in the roster and final ranking but spectate future hands. The host may end a session only between hands. Otherwise, play continues while at least two seats have chips and ends automatically when fewer than two remain. A host departure during a hand takes effect after that hand completes.
 
+## Visual direction
+
+The table screen uses an immersive dark-green felt table framed in warm wood. It keeps the community cards, pot, seated players, chip counts, player-specific hole cards, and turn state visible in one view. Cards render as recognizable faces and card backs, never as plain rank-and-suit text. The active player's action bar remains compact beneath the table with Fold, the context-specific Call or Check, and Raise. The private room code and table size sit quietly in the header. Lobby, room setup, AI-seat controls, and recovery notices use the same restrained dark visual language.
+
 ## Deployment architecture
 
 Run one Dockerized FastAPI service on the existing GCP VM behind its Nginx reverse proxy. Use a local-only container port when Nginx is on the VM. Mount a host `data` directory into the container so SQLite survives image redeployments. Run exactly one Uvicorn worker.
