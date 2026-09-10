@@ -22,7 +22,7 @@ function phrase(action: TableAction, name: string): string {
 export function ActionFeed({ pub, mySeat }: { pub: PublicState; mySeat: number }) {
   const actions = pub.actions ?? [];
   if (actions.length === 0) return null;
-  const recent = actions.slice(-4);
+  const recent = actions.slice(-3);
   const name = (seat: number) => (seat === mySeat ? 'You' : pub.names[seat] ?? `Seat ${seat}`);
 
   return <ol className="action-feed" aria-label="What has happened this hand">
