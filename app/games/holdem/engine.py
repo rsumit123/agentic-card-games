@@ -276,7 +276,11 @@ def apply_action(state: HoldemState, seat_id: int, action: HoldemAction | Mappin
         + ({"seat_id": seat_id, "street": street_before, "type": action.type, "amount": target},),
     )
     if action.type == "fold":
-        return _finish_fold(state)
+        finished = _finish_fold(state)
+        if finished.street == "complete":
+            return finished
+        # Two or more players are still in, so the hand carries on and the turn
+        # has to move: returning here left the action on the seat that folded.
     if aggressive:
         increase = updated.street_contribution - state.current_bet
         new_min_raise = increase if increase >= state.min_raise else state.min_raise

@@ -260,3 +260,22 @@ def test_showdown_reveals_the_five_cards_that_won():
         assert len(best_five) == 5
         available = set(state.player(entry["seat_id"]).hole_cards) | set(state.community_cards)
         assert set(best_five) <= available
+
+
+def test_fold_passes_the_turn_on_a_three_handed_table():
+    """A fold that does not end the hand must still move the action along."""
+    state = start_hand({1: 1000, 2: 1000, 3: 1000}, random_bytes=RANDOM_BYTES)
+    first = state.current_seat
+
+    folded = apply_action(state, first, {"type": "fold"})
+
+    assert folded.street == "preflop", "two players are still in the hand"
+    assert folded.player(first).folded is True
+    assert folded.current_seat is not None
+    assert folded.current_seat != first, "the folded seat cannot be asked to act again"
+    assert folded.player(folded.current_seat).folded is False
+
+    settled = apply_action(folded, folded.current_seat, {"type": "fold"})
+
+    assert settled.street == "complete"
+    assert settled.current_seat is None
