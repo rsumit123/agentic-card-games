@@ -55,6 +55,14 @@ def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[st
         if player.get("seat_id") != seat_id
     ]
 
+    roles = []
+    if public.get("dealer_seat") == seat_id:
+        roles.append("the dealer")
+    if public.get("small_blind_seat") == seat_id:
+        roles.append("the small blind")
+    if public.get("big_blind_seat") == seat_id:
+        roles.append("the big blind")
+
     lines = [
         f"You are seat {seat_id}. Your cards: {describe_cards(projection.get('hole_cards'))}.",
         f"Street: {STREET_NAMES.get(public.get('street'), public.get('street'))}.",
@@ -62,6 +70,15 @@ def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[st
         f"Pot: {public.get('pot')}. Your stack: {me.get('stack')}. To call: {to_call}.",
         f"Big blind: {public.get('big_blind')}. Smallest legal raise increment: {public.get('min_raise')}.",
     ]
+    if roles:
+        lines.append("You are " + " and ".join(roles) + " this hand.")
+    if to_call > 0:
+        pot = int(public.get("pot", 0))
+        share = round(100 * to_call / (pot + to_call)) if pot + to_call else 0
+        lines.append(
+            f"Pot odds: calling {to_call} to win {pot} means you need to win about {share}% "
+            "of the time to break even."
+        )
     if opponents:
         lines.append("Opponents: " + "; ".join(opponents) + ".")
     rank = projection.get("hand_rank")
@@ -81,7 +98,10 @@ How to play well:
   something better. Do not raise on every street by reflex.
 - A bet or raise amount is the total you are raising TO for this street, not an increment.
 - All-in is for very strong hands or a short stack, not a default move.
-- Checking and calling are fine when your hand is playable but not strong."""
+- Checking and calling are fine when your hand is playable but not strong.
+- A cheap call is not the same as an expensive one. When the amount to call is small next
+  to the pot, folding a playable hand is usually a mistake. Before the flop, posting or
+  completing a blind is not the same as facing a raise. Folding every hand loses slowly."""
 
 REPLY_FORMAT = """Reply with JSON only, no prose outside it:
 {"reasoning": "<one short sentence explaining the choice>",
