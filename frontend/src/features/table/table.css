@@ -1,0 +1,13 @@
+.felt-wrap { padding: 24px; }
+.felt { position: relative; width: min(920px, 100%); aspect-ratio: 16 / 10; margin: 0 auto; border-radius: 50% / 45%; background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt-deep) 85%); box-shadow: 0 0 0 14px var(--walnut), 0 0 0 16px var(--walnut-light), 0 20px 40px rgba(0,0,0,.5); }
+.pot { position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); text-align: center; color: var(--mist); }
+.pot .chip span { font-family: var(--font-display); font-size: 28px; color: var(--ivory); display: block; }
+.community { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); display: flex; gap: 8px; }
+.seat-badge { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 4px; min-width: 96px; padding: 8px 10px; border-radius: 14px; background: rgba(15,26,20,.75); color: var(--ivory); border: 2px solid transparent; }
+.seat-active { border-color: var(--copper); box-shadow: 0 0 0 4px rgba(184,118,58,.25); }
+.seat-folded { opacity: .5; }
+.seat-cards { display: flex; gap: 4px; }
+.seat-name { font-size: 14px; color: var(--mist); } .seat-stack { font-size: 18px; font-weight: 600; }
+.seat-bet { font-size: 13px; color: var(--brass); }
+.marker { position: absolute; transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; background: var(--ivory); color: var(--ink); }
+@media (max-width: 899px) { .felt { aspect-ratio: 10 / 14; border-radius: 45% / 50%; } .community { top: 50%; gap: 4px; } .felt-wrap { padding: 12px; } }
