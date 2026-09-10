@@ -205,3 +205,22 @@ def test_websocket_reports_unauthenticated_close_after_accept():
     asyncio.run(table_socket(websocket, 999))
 
     assert events == ["accept", "close:4401"]
+
+
+def test_websocket_snapshot_carries_the_reveal_deadline_slot(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/ws-reveal.db")
+    app = __import__("app.main", fromlist=["create_app"]).create_app()
+    with app.state.session_factory() as session:
+        session.add_all([User(google_subject="one"), User(google_subject="two")])
+        session.commit()
+    created = app.state.room_store.create_table(1, TableConfig(seat_count=2))
+    app.state.room_store.join_table(2, created.room_code)
+    app.state.room_store.start_table(1, created.id)
+    app.state.room_manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+
+    with TestClient(app) as client:
+        client.cookies.set("session", _session_cookie(1))
+        with client.websocket_connect(f"/ws/tables/{created.id}", headers={"origin": "http://localhost:8000"}) as websocket:
+            snapshot = websocket.receive_json()
+
+    assert snapshot["reveal_deadline"] is None, "no hand is complete, so nothing is being revealed"

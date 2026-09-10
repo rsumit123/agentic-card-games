@@ -343,3 +343,63 @@ def test_ai_is_asked_a_bounded_number_of_times_per_revision():
         asyncio.run(manager.run_once(1))
 
     assert adapter.calls <= 3
+
+
+def _in_progress_table(tmp_path, name):
+    from app.db import build_engine, initialize_database, session_factory
+    from app.settings import Settings
+
+    settings = Settings(database_url=f"sqlite:///{tmp_path}/{name}.db", data_dir=tmp_path)
+    engine = build_engine(settings)
+    initialize_database(engine)
+    sessions = session_factory(engine)
+    with sessions() as session:
+        host = User(google_subject="host", display_name="Host")
+        player = User(google_subject="player", display_name="Player")
+        session.add_all([host, player])
+        session.flush()
+        table = Table(
+            host_user_id=host.id,
+            room_code_hash=name,
+            seat_count=2,
+            starting_chips=1000,
+            small_blind=5,
+            big_blind=10,
+            status="in_progress",
+            seats=[
+                Seat(seat_number=1, user_id=host.id, chip_count=1000, is_funded=True),
+                Seat(seat_number=2, user_id=player.id, chip_count=1000, is_funded=True),
+            ],
+        )
+        session.add(table)
+        session.commit()
+        return settings, sessions, table.id
+
+
+def test_reveal_deadline_is_published_while_the_table_waits_for_the_next_hand(tmp_path):
+    settings, sessions, table_id = _in_progress_table(tmp_path, "reveal-deadline")
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    manager = RoomManager(clock=lambda: now, hand_reveal_seconds=6, session_factory=sessions)
+    actor = manager.ensure_actor_for_table(table_id, sessions, settings)
+
+    assert manager.reveal_deadline(table_id) is None
+
+    manager.submit(table_id, 1, {"expected_revision": 0, "idempotency_key": "reveal-fold", "action": {"type": "fold"}})
+
+    assert actor.state.street == "complete"
+    assert manager.reveal_deadline(table_id) == now + timedelta(seconds=6)
+
+    queue = manager.connect(table_id, 2)
+    manager._publish_state(table_id, actor)
+    assert queue.get_nowait()["reveal_deadline"] == now + timedelta(seconds=6)
+
+
+def test_reveal_deadline_is_absent_when_the_session_is_ending(tmp_path):
+    settings, sessions, table_id = _in_progress_table(tmp_path, "reveal-end")
+    manager = RoomManager(hand_reveal_seconds=6, session_factory=sessions)
+    manager.ensure_actor_for_table(table_id, sessions, settings)
+    manager.leave(table_id, 2)
+
+    manager.submit(table_id, 1, {"expected_revision": 0, "idempotency_key": "end-fold", "action": {"type": "fold"}})
+
+    assert manager.reveal_deadline(table_id) is None

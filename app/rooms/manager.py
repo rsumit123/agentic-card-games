@@ -355,7 +355,17 @@ class RoomManager:
         )
         self._publish_state(table_id, actor)
 
+    def reveal_deadline(self, table_id: int) -> datetime | None:
+        """When the next hand begins, or None if none is coming.
+
+        The table holds a finished hand on screen for a few seconds before
+        dealing again. Without this the client only sees the hand vanish, so it
+        cannot count the wait down or explain it.
+        """
+        return self._reveal_deadlines.get(table_id)
+
     def _publish_state(self, table_id: int, actor: RoomActor) -> None:
+        reveal_deadline = self.reveal_deadline(table_id)
         self.publish(
             table_id,
             lambda seat_id: {
@@ -363,6 +373,7 @@ class RoomManager:
                 "revision": actor.revision,
                 "payload": actor.snapshot_for(seat_id),
                 "deadline": actor.deadline,
+                "reveal_deadline": reveal_deadline,
             },
         )
 

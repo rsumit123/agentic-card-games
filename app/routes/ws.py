@@ -32,7 +32,8 @@ async def table_socket(websocket: WebSocket, table_id: int):
         await websocket.close(code=4403)
         return
 
-    queue = websocket.app.state.room_manager.connect(table_id, seat.seat_number)
+    manager = websocket.app.state.room_manager
+    queue = manager.connect(table_id, seat.seat_number)
     notice = websocket.app.state.recovery_notices_by_table.get(table_id)
     await websocket.send_json(
         jsonable_encoder(
@@ -41,6 +42,7 @@ async def table_socket(websocket: WebSocket, table_id: int):
                 "revision": actor.revision,
                 "payload": actor.snapshot_for(seat.seat_number),
                 "deadline": actor.deadline,
+                "reveal_deadline": manager.reveal_deadline(table_id),
                 "recovery_notice": notice,
             }
         )
@@ -73,24 +75,27 @@ async def table_socket(websocket: WebSocket, table_id: int):
                     continue
                 result = websocket.app.state.room_manager.submit(table_id, seat.seat_number, command)
                 if isinstance(result, Ack):
+                    reveal_deadline = manager.reveal_deadline(table_id)
                     await websocket.send_json(
                         jsonable_encoder(
                             {
                                 "type": "ack",
-                                "revision": result.revision,
+                                "revision": actor.revision,
                                 "idempotency_key": result.idempotency_key,
-                                "payload": result.snapshot,
-                                "deadline": result.deadline,
+                                "payload": actor.snapshot_for(seat.seat_number),
+                                "deadline": actor.deadline,
+                                "reveal_deadline": reveal_deadline,
                             }
                         )
                     )
-                    websocket.app.state.room_manager.publish(
+                    manager.publish(
                         table_id,
                         lambda recipient_seat: {
                             "type": "state",
-                            "revision": result.revision,
+                            "revision": actor.revision,
                             "payload": actor.snapshot_for(recipient_seat),
-                            "deadline": result.deadline,
+                            "deadline": actor.deadline,
+                            "reveal_deadline": reveal_deadline,
                         },
                         exclude_seat_id=seat.seat_number,
                     )
