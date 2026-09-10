@@ -2,10 +2,9 @@ services:
   card-games:
     build: .
     env_file:
-      - path: .env
-        required: false
+      - .env
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${HOST_PORT:-8000}:8000"
     volumes:
       - ./data:/app/data
     restart: unless-stopped

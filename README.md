@@ -5,7 +5,7 @@ The Common Table is a self-managed, play-money Texas Hold'em table service. Vers
 ## Local deployment
 
 1. Copy `.env.example` to `.env` and set a long random `SESSION_SECRET`, the Google OAuth client values, `FRONTEND_URL`, and the exact frontend origins in `ALLOWED_ORIGINS`.
-2. Run `docker compose up -d --build`.
+2. Run `docker compose up -d --build`. Set `HOST_PORT` in `.env` when the default 8000 is already used on the host; the container always listens on 8000 internally.
 3. Check `curl http://127.0.0.1:8000/healthz` and inspect `docker compose ps`.
 
 The service binds only to the VM loopback interface, mounts `./data` at `/app/data`, and runs exactly one Uvicorn worker. Never commit `.env`, the mounted data directory, or provider credentials.
