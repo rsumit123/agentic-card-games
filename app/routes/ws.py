@@ -34,7 +34,10 @@ async def table_socket(websocket: WebSocket, table_id: int):
 
     manager = websocket.app.state.room_manager
     queue = manager.connect(table_id, seat.seat_number)
-    notice = websocket.app.state.recovery_notices_by_table.get(table_id)
+    # The notice describes what happened at startup, so it is worth saying once.
+    # Leaving it in place re-sent it on every reconnect and blanked the table
+    # again in the middle of a live session.
+    notice = websocket.app.state.recovery_notices_by_table.pop(table_id, None)
     await websocket.send_json(
         jsonable_encoder(
             {
