@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import type { TableView } from '../../domain/table';
 import { me, loginUrl } from '../../api/auth';
 import { getTable } from '../../api/tables';
@@ -15,6 +14,7 @@ import { HandResult } from './HandResult';
 import { SessionLine } from './SessionLine';
 import { useSession } from '../../store/session';
 import { LeaveEndControls } from './LeaveEndControls';
+import { SessionEnded } from './SessionEnded';
 
 function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
@@ -35,8 +35,7 @@ function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () 
   return <div role="alert"><p>{message}</p>{message.includes('signed out') ? <a href={loginUrl()}>Sign in again</a> : message.includes('not seated') ? <a href="/">Back to lobby</a> : <button onClick={reconnect}>Retry</button>}</div>;
 }
 
-export function TablePage({ view }: { view: TableView }) {
-  const navigate = useNavigate();
+export function TablePage({ view, onLeft = () => window.location.assign('/') }: { view: TableView; onLeft?: () => void }) {
   const { send, reconnect } = useTableSocket(view.id);
   const { projection, deadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, canAct, session } = useTable();
   const myUserId = useSession((state) => state.user?.id ?? null);
@@ -54,11 +53,11 @@ export function TablePage({ view }: { view: TableView }) {
       <p>Private table · {view.seat_count} seats · blinds {view.small_blind}/{view.big_blind}</p>
       <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
       <ConnectionPill status={connection} />
-      <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection ? projection.public.street !== 'complete' : true} onLeft={() => navigate('/')} />
+      <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection ? projection.public.street !== 'complete' : true} onLeft={onLeft} />
     </header>
     {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
-    {!projection ? <p aria-busy="true">Opening your seat…</p> : !recoveryNotice && <>
+    {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : !recoveryNotice && <>
       <Felt projection={projection} />
       <HandResult pub={projection.public} />
       {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
