@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { TableView } from '../../domain/table';
 import { me, loginUrl } from '../../api/auth';
 import { getTable } from '../../api/tables';
@@ -13,6 +14,7 @@ import { RecoveryNotice } from './RecoveryNotice';
 import { HandResult } from './HandResult';
 import { SessionLine } from './SessionLine';
 import { useSession } from '../../store/session';
+import { LeaveEndControls } from './LeaveEndControls';
 
 function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
@@ -34,6 +36,7 @@ function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () 
 }
 
 export function TablePage({ view }: { view: TableView }) {
+  const navigate = useNavigate();
   const { send, reconnect } = useTableSocket(view.id);
   const { projection, deadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, canAct, session } = useTable();
   const myUserId = useSession((state) => state.user?.id ?? null);
@@ -51,6 +54,7 @@ export function TablePage({ view }: { view: TableView }) {
       <p>Private table · {view.seat_count} seats · blinds {view.small_blind}/{view.big_blind}</p>
       <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
       <ConnectionPill status={connection} />
+      <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection ? projection.public.street !== 'complete' : true} onLeft={() => navigate('/')} />
     </header>
     {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
