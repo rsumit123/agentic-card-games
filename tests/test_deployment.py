@@ -72,3 +72,11 @@ def test_requirements_declare_google_auth_requests_transport():
     """
     requirements = (ROOT / "requirements.txt").read_text()
     assert "google-auth[requests]" in requirements
+
+
+def test_alembic_can_import_the_app_from_its_own_directory():
+    """`alembic upgrade head` runs as a console script, which does not add the
+    working directory to sys.path. Without this the documented deploy command
+    fails inside the container with ModuleNotFoundError: No module named 'app'.
+    """
+    assert "prepend_sys_path = ." in (ROOT / "alembic.ini").read_text()
