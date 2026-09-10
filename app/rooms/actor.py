@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import threading
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -13,6 +15,8 @@ from ..games.holdem.state import HoldemState
 from ..models import RoomEvent
 from ..settings import Settings
 from .protocol import Ack, CommandEnvelope, CommandError, SnapshotEnvelope
+
+logger = logging.getLogger(__name__)
 
 
 class RoomActor:
@@ -89,7 +93,7 @@ class RoomActor:
             "full": True,
         }
 
-    def _persist_transition(self, revision: int, command: CommandEnvelope) -> None:
+    def _persist_transition(self, revision: int, command: CommandEnvelope, *, timeout: bool = False) -> None:
         if self._session_factory is None:
             return
         with self._session_factory() as session:
@@ -98,17 +102,31 @@ class RoomActor:
                     table_id=self.table_id,
                     revision=revision,
                     event_type="action_accepted",
-                    payload={"action": dict(command.action)},
+                    payload={"action": dict(command.action), "timeout": timeout},
                     idempotency_key=command.idempotency_key,
                 )
             )
             session.commit()
+
+    @staticmethod
+    def _mark_timeout(state: HoldemState) -> HoldemState:
+        """Flag the entry the clock just wrote, so the client can say the time ran out.
+
+        The flag is stamped here rather than carried on the action itself: it is
+        a fact about who submitted the action, and a client must not be able to
+        claim it.
+        """
+        if not state.action_log:
+            return state
+        marked = {**state.action_log[-1], "timeout": True}
+        return replace(state, action_log=state.action_log[:-1] + (marked,))
 
     def submit(
         self,
         command: CommandEnvelope | Mapping[str, Any],
         *,
         seat_id: int | None = None,
+        timeout: bool = False,
     ) -> Ack | CommandError:
         try:
             envelope = CommandEnvelope.from_value(command)
@@ -125,10 +143,10 @@ class RoomActor:
                 return CommandError("invalid_action", str(exc), self.revision)
             next_revision = self.revision + 1
             try:
-                self._persist_transition(next_revision, envelope)
+                self._persist_transition(next_revision, envelope, timeout=timeout)
             except Exception as exc:
                 return CommandError("persistence_failed", str(exc), self.revision)
-            self.state = transition.state
+            self.state = self._mark_timeout(transition.state) if timeout else transition.state
             self.revision = next_revision
             self._deadline = self.now + self.action_timeout if self.state.current_seat is not None else None
             submitter_seat = seat_id if seat_id is not None else transition.state.current_seat
@@ -157,4 +175,5 @@ class RoomActor:
                     "action": self.module.timeout_action(self.state, self.state.current_seat),
                 },
                 seat_id=self.state.current_seat,
+                timeout=True,
             )

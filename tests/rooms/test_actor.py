@@ -71,3 +71,26 @@ def test_tick_auto_folds_expired_turn():
     assert isinstance(timeout_ack, Ack)
     assert actor.state.player(0).folded is True
     assert actor.state.street == "complete"
+
+
+def test_timeout_fold_is_marked_in_the_action_log():
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(42, state, clock=lambda: now, action_timeout=timedelta(seconds=5))
+
+    actor.tick(now + timedelta(seconds=6))
+
+    entry = actor.state.action_log[-1]
+    assert entry["type"] == "fold"
+    assert entry["timeout"] is True
+
+
+def test_voluntary_fold_is_not_marked_as_a_timeout():
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(42, state)
+
+    actor.submit({"expected_revision": 0, "idempotency_key": "fold-1", "action": {"type": "fold"}})
+
+    entry = actor.state.action_log[-1]
+    assert entry["type"] == "fold"
+    assert entry.get("timeout") in (None, False)
