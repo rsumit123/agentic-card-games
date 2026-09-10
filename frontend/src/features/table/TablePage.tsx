@@ -10,6 +10,7 @@ import { ActionBar, type BarStatus } from './ActionBar';
 import { DeadlineRing } from './DeadlineRing';
 import { ConnectionPill } from './ConnectionPill';
 import { RecoveryNotice } from './RecoveryNotice';
+import { HandResult } from './HandResult';
 
 function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export function TablePage({ view }: { view: TableView }) {
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
     {!projection ? <p aria-busy="true">Opening your seat…</p> : !recoveryNotice && <>
       <Felt projection={projection} />
+      <HandResult pub={projection.public} />
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
         error={lastError && lastError.code !== 'stale_revision' ? lastError.message : null}
         deadline={projection.public.current_seat === projection.seat_id ? <DeadlineRing deadline={deadline} /> : null} />
