@@ -56,10 +56,14 @@ export const useTable = create<TableState>((set, get) => ({
       set({ pending: null, lastError: { code: event.code, message: event.message }, needsResync: event.code === 'stale_revision' });
       return;
     }
+    // An ack always releases the move, whatever revision it carries. A hand
+    // that settles while the command is in flight can broadcast the same
+    // revision first, and dropping the ack for being stale would leave the
+    // player stuck on "Sending…" with every button refusing to work.
+    if (event.type === 'ack') set({ pending: null, droppedAction: false });
     if (event.revision <= get().revision) return;
     set({ projection: event.payload, revision: event.revision, deadline: event.deadline,
       revealDeadline: event.reveal_deadline ?? null, lastError: null,
-      ...(event.type === 'ack' ? { droppedAction: false } : {}),
       ...(event.type === 'ack' ? { pending: null } : {}) });
   },
   setConnection: (connection) => set({ connection }),

@@ -501,3 +501,26 @@
 }
 
 .leaving { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--mist-dim); }
+
+/* Names the street as it lands, then gets out of the way. */
+.street-label {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(12, 22, 17, 0.82);
+  color: var(--brass);
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: street-in 1400ms ease-out both;
+}
+@keyframes street-in {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
+  14%, 68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -58%) scale(1); }
+}

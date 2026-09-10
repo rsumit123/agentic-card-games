@@ -6,6 +6,7 @@ import { seatPositions, HERO_SLOT } from './seatLayout';
 import { ChipFlight, type Flight } from './ChipFlight';
 import { Pots } from './Pots';
 import { useRunout } from './useRunout';
+import { StreetLabel } from './StreetLabel';
 import './table.css';
 
 export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [] }: {
@@ -47,6 +48,7 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
 
   return <section className="felt-wrap" aria-label="Table">
     <div className="felt" data-street={pub.street}>
+      <StreetLabel street={pub.street} handNumber={pub.hand_number ?? 0} />
       <Pots pub={pub} />
       <div className="community" role="group" aria-label="Community cards">
         {board.cards.map((card, index) => <PlayingCard key={`${card.rank}${card.suit}${index}`} card={card} size="md"
