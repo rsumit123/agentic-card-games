@@ -72,7 +72,20 @@ async def callback(request: Request, code: str | None = None, state: str | None 
 
     request.session["user_id"] = user.id
     request.session["csrf_token"] = secrets.token_urlsafe(32)
-    return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(f"{settings.frontend_url.rstrip('/')}/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/me")
+def me(request: Request, user: AuthenticatedUser = Depends(require_user)):
+    return {
+        "user": {
+            "id": user.id,
+            "google_subject": user.google_subject,
+            "email": user.email,
+            "display_name": user.display_name,
+        },
+        "csrf_token": request.session["csrf_token"],
+    }
 
 
 @router.post("/logout")

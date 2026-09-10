@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import base64
+import json
 from datetime import datetime, timedelta, timezone
 
+from itsdangerous import TimestampSigner
 import pytest
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -105,3 +108,32 @@ def test_non_host_cannot_start_or_reconfigure(app_and_store):
         store.update_table_config(2, created.id, TableConfig(seat_count=3))
     with pytest.raises(UnauthorizedJoin):
         store.start_table(2, created.id)
+
+
+def test_host_can_fill_empty_seat_with_ai_and_start(app_and_store):
+    _, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+
+    view = store.fill_ai_seat(1, created.id, 2, "Hard")
+    started = store.start_table(1, created.id)
+
+    assert view.seats[1].actor_type == "ai"
+    assert view.seats[1].ai_tier == "Hard"
+    assert started.status == "in_progress"
+
+
+def test_http_start_registers_actor_for_real_table(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+    store.join_table(2, created.room_code)
+    cookie_data = base64.b64encode(json.dumps({"user_id": 1, "csrf_token": "csrf"}).encode()).decode()
+    cookie = TimestampSigner("development-only-change-me").sign(cookie_data).decode()
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as client:
+        client.cookies.set("session", cookie)
+        response = client.post(f"/tables/{created.id}/start", headers={"X-CSRF-Token": "csrf"})
+
+    assert response.status_code == 200
+    assert app.state.room_manager.get(created.id) is not None

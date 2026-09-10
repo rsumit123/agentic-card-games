@@ -1,6 +1,6 @@
-# Glass Orchard
+# The Common Table
 
-Glass Orchard is a self-managed, play-money Texas Hold'em table service. Version one is a single FastAPI process with an in-process room actor, SQLite WAL storage, Google OIDC sessions, and optional OpenRouter decision adapters for AI seats.
+The Common Table is a self-managed, play-money Texas Hold'em table service. Version one is a single FastAPI process with an in-process room actor, SQLite WAL storage, Google OIDC sessions, and optional OpenRouter decision adapters for AI seats.
 
 ## Local deployment
 

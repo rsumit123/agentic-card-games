@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import asyncio
 from starlette.middleware.sessions import SessionMiddleware
 
 from .auth import validate_websocket_origin
@@ -23,12 +26,29 @@ def create_app() -> FastAPI:
     initialize_database(engine)
     sessions = session_factory(engine)
 
-    app = FastAPI(title=settings.app_name)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        stop_event = asyncio.Event()
+        driver = asyncio.create_task(app.state.room_manager.run_forever(stop_event))
+        try:
+            yield
+        finally:
+            stop_event.set()
+            await driver
+
+    app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.session_secret,
-        same_site="lax",
+        same_site="none" if settings.environment == "production" else "lax",
         https_only=settings.environment == "production",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.allowed_origins),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-CSRF-Token"],
     )
     app.state.settings = settings
     app.state.engine = engine
@@ -36,6 +56,10 @@ def create_app() -> FastAPI:
     app.state.room_store = RoomStore(sessions)
     app.state.room_manager = RoomManager()
     app.state.recovery_notices = recover_incomplete_hands(sessions)
+    app.state.recovery_notices_by_table = {
+        notice.table_id: notice.message for notice in app.state.recovery_notices
+    }
+    app.state.room_manager.restore_in_progress(sessions, settings)
     app.state.UserModel = User
     app.state.validate_websocket_origin = validate_websocket_origin
     app.include_router(health_router)

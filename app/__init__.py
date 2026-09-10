@@ -1,1 +1,1 @@
-"""Glass Orchard application package."""
+"""The Common Table application package."""

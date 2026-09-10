@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
 from ..models import Seat, Table, User
+from ..ai.policy import policy_for_tier
 
 
 class TableError(Exception):
@@ -251,9 +252,30 @@ class RoomStore:
             if table.status != TableStatus.LOBBY.value:
                 raise TableClosed("table has already started")
             selected_seats = [seat for seat in table.seats if seat.seat_number <= table.seat_count]
-            if any(seat.user_id is None for seat in selected_seats):
+            if any(seat.user_id is None and seat.actor_type != "ai" for seat in selected_seats):
                 raise FullTable("all selected seats must be occupied")
             table.status = TableStatus.IN_PROGRESS.value
             table.current_revision += 1
+            session.commit()
+            return self._view(table)
+
+    def fill_ai_seat(self, user_id: int, table_id: int, seat_number: int, tier: str) -> TableView:
+        try:
+            policy_for_tier(tier)
+        except ValueError as exc:
+            raise InvalidConfiguration(str(exc)) from exc
+        with self.session_factory() as session:
+            table = self._get_table(session, table_id)
+            if table.host_user_id != user_id or table.status != TableStatus.LOBBY.value:
+                raise UnauthorizedJoin("only the lobby host can add an AI seat")
+            seat = next((item for item in table.seats if item.seat_number == seat_number), None)
+            if seat is None or seat.seat_number > table.seat_count:
+                raise InvalidConfiguration("seat is not part of this table")
+            if seat.user_id is not None or seat.actor_type == "ai":
+                raise TableClosed("seat is already occupied")
+            seat.actor_type = "ai"
+            seat.ai_tier = tier
+            seat.chip_count = table.starting_chips
+            seat.is_funded = True
             session.commit()
             return self._view(table)

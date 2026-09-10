@@ -1,4 +1,4 @@
-"""create initial Glass Orchard tables"""
+"""create initial The Common Table tables"""
 
 from alembic import op
 

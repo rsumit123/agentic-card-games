@@ -116,6 +116,38 @@ def test_websocket_sends_member_snapshot_and_ack(monkeypatch, tmp_path):
             assert acknowledgement["revision"] == 1
 
 
+def test_websocket_fans_out_state_without_leaking_hole_cards(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/ws-fanout.db")
+    app = __import__("app.main", fromlist=["create_app"]).create_app()
+    with app.state.session_factory() as session:
+        session.add_all([User(google_subject="one"), User(google_subject="two")])
+        session.commit()
+    created = app.state.room_store.create_table(1, TableConfig(seat_count=2))
+    app.state.room_store.join_table(2, created.room_code)
+    app.state.room_store.start_table(1, created.id)
+    app.state.room_manager.register(created.id, RoomActor(created.id, start_hand({1: 1000, 2: 1000}, random_bytes=RANDOM_BYTES)))
+
+    with TestClient(app) as first_client, TestClient(app) as second_client:
+        first_client.cookies.set("session", _session_cookie(1))
+        second_client.cookies.set("session", _session_cookie(2))
+        with first_client.websocket_connect(f"/ws/tables/{created.id}", headers={"origin": "http://localhost:8000"}) as first_socket:
+            first_snapshot = first_socket.receive_json()
+            with second_client.websocket_connect(f"/ws/tables/{created.id}", headers={"origin": "http://localhost:8000"}) as second_socket:
+                second_snapshot = second_socket.receive_json()
+                first_cards = first_snapshot["payload"]["hole_cards"]
+                second_cards = second_snapshot["payload"]["hole_cards"]
+                first_socket.send_json(
+                    {"expected_revision": 0, "idempotency_key": "fanout-1", "action": {"type": "call"}}
+                )
+                assert first_socket.receive_json()["type"] == "ack"
+                state_event = second_socket.receive_json()
+
+    assert state_event["type"] == "state"
+    assert state_event["payload"]["seat_id"] == 2
+    assert state_event["payload"]["hole_cards"] == second_cards
+    assert state_event["payload"]["hole_cards"] != first_cards
+
+
 def test_websocket_rejects_bad_origin(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/ws.db")
     app = __import__("app.main", fromlist=["create_app"]).create_app()

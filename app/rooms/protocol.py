@@ -29,6 +29,7 @@ class Ack:
     revision: int
     idempotency_key: str
     snapshot: Mapping[str, Any]
+    deadline: Any = None
 
 
 @dataclass(frozen=True, slots=True)

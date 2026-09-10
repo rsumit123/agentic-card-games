@@ -98,8 +98,11 @@ def require_csrf(request: Request) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed")
 
 
-def validate_websocket_origin(origin: str | None, allowed_origin: str) -> bool:
-    return bool(origin and allowed_origin and secrets.compare_digest(origin.rstrip("/"), allowed_origin.rstrip("/")))
+def validate_websocket_origin(origin: str | None, allowed_origin: str | tuple[str, ...]) -> bool:
+    if not origin:
+        return False
+    allowed = (allowed_origin,) if isinstance(allowed_origin, str) else allowed_origin
+    return any(secrets.compare_digest(origin.rstrip("/"), item.rstrip("/")) for item in allowed)
 
 
 def google_authorization_url(settings, state: str, nonce: str) -> str:

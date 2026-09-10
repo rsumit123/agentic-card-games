@@ -1,8 +1,8 @@
-# Glass Orchard: Private Card Table Design
+# The Common Table: Private Card Table Design
 
 ## Purpose and scope
 
-Glass Orchard is a browser-based, play-money card-game platform. Version one is a private, four-seat, no-limit Texas Hold'em table. A seat may be occupied by a signed-in human or by an AI player. Public tables, real-money play, deposits, withdrawals, and account-password authentication are out of scope.
+The Common Table is a browser-based, play-money card-game platform. Version one is a private, four-seat, no-limit Texas Hold'em table. A seat may be occupied by a signed-in human or by an AI player. Public tables, real-money play, deposits, withdrawals, and account-password authentication are out of scope.
 
 The architecture must support later rule modules such as Uno and Go Fish without changing the room, identity, player-seat, or AI-decision foundations.
 

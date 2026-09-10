@@ -338,7 +338,18 @@ class HoldemModule:
         return Transition(state=next_state, action=action, revision=state.hand_number + 1)
 
     def seat_projection(self, state: HoldemState, seat_id: int):
-        return {"public": public_projection(state), "hole_cards": tuple(state.player(seat_id).hole_cards), "seat_id": seat_id}
+        player = state.player(seat_id)
+        hand_rank = None
+        if len(state.community_cards) + len(player.hole_cards) >= 5:
+            rank = evaluate_hand(player.hole_cards + state.community_cards)
+            hand_rank = {"category": rank.category_name, "tiebreakers": rank.tiebreakers}
+        return {
+            "public": public_projection(state),
+            "hole_cards": tuple(player.hole_cards),
+            "seat_id": seat_id,
+            "legal_actions": legal_actions(state, seat_id),
+            "hand_rank": hand_rank,
+        }
 
     def public_projection(self, state: HoldemState):
         return public_projection(state)
@@ -356,6 +367,15 @@ def public_projection(state: HoldemState) -> dict[str, object]:
         "community_cards": state.community_cards,
         "pot": state.pot,
         "current_seat": state.current_seat,
+        "dealer_seat": state.dealer_seat,
+        "small_blind_seat": state.small_blind_seat,
+        "big_blind_seat": state.big_blind_seat,
+        "small_blind": state.small_blind,
+        "big_blind": state.big_blind,
+        "current_bet": state.current_bet,
+        "min_raise": state.min_raise,
+        "winners": state.winners,
+        "payouts": state.payouts,
         "players": tuple(
             {
                 "seat_id": player.seat_id,
@@ -363,6 +383,8 @@ def public_projection(state: HoldemState) -> dict[str, object]:
                 "folded": player.folded,
                 "all_in": player.all_in,
                 "contribution": player.total_contribution,
+                "street_contribution": player.street_contribution,
+                "has_acted": player.has_acted,
             }
             for player in state.players
         ),

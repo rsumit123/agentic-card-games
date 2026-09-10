@@ -83,7 +83,12 @@ class RoomActor:
             )
             session.commit()
 
-    def submit(self, command: CommandEnvelope | Mapping[str, Any]) -> Ack | CommandError:
+    def submit(
+        self,
+        command: CommandEnvelope | Mapping[str, Any],
+        *,
+        seat_id: int | None = None,
+    ) -> Ack | CommandError:
         try:
             envelope = CommandEnvelope.from_value(command)
         except (KeyError, TypeError, ValueError) as exc:
@@ -105,7 +110,13 @@ class RoomActor:
             self.state = transition.state
             self.revision = next_revision
             self._deadline = self.now + self.action_timeout if self.state.current_seat is not None else None
-            ack = Ack(self.revision, envelope.idempotency_key, self.snapshot_for(transition.state.current_seat))
+            submitter_seat = seat_id if seat_id is not None else transition.state.current_seat
+            ack = Ack(
+                self.revision,
+                envelope.idempotency_key,
+                self.snapshot_for(submitter_seat),
+                self._deadline,
+            )
             self._seen[envelope.idempotency_key] = ack
             return ack
 
@@ -123,5 +134,6 @@ class RoomActor:
                     "expected_revision": self.revision,
                     "idempotency_key": f"timeout:{self.revision}",
                     "action": self.module.timeout_action(self.state, self.state.current_seat),
-                }
+                },
+                seat_id=self.state.current_seat,
             )

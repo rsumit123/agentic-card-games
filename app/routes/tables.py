@@ -24,6 +24,10 @@ class JoinTableRequest(BaseModel):
     code: str
 
 
+class AISeatRequest(BaseModel):
+    tier: str
+
+
 def _error(error: TableError) -> HTTPException:
     if isinstance(error, (UnauthorizedJoin,)):
         return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(error))
@@ -65,3 +69,50 @@ def join_table(
     except TableError as exc:
         raise _error(exc) from exc
 
+
+@router.get("/{table_id}")
+def get_table(
+    table_id: int,
+    request: Request,
+    _user: AuthenticatedUser = Depends(require_user),
+):
+    try:
+        with request.app.state.session_factory() as session:
+            table = request.app.state.room_store._get_table(session, table_id)
+            return request.app.state.room_store._view(table)
+    except TableError as exc:
+        raise _error(exc) from exc
+
+
+@router.post("/{table_id}/start")
+def start_table(
+    table_id: int,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_user),
+    _csrf: None = Depends(require_csrf),
+):
+    try:
+        view = request.app.state.room_store.start_table(user.id, table_id)
+        actor = request.app.state.room_manager.ensure_actor_for_table(
+            table_id, request.app.state.session_factory, request.app.state.settings
+        )
+        return {"table": view, "revision": actor.revision}
+    except (TableError, ValueError) as exc:
+        if isinstance(exc, TableError):
+            raise _error(exc) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{table_id}/seats/{seat_number}/ai")
+def fill_ai_seat(
+    table_id: int,
+    seat_number: int,
+    payload: AISeatRequest,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_user),
+    _csrf: None = Depends(require_csrf),
+):
+    try:
+        return request.app.state.room_store.fill_ai_seat(user.id, table_id, seat_number, payload.tier)
+    except TableError as exc:
+        raise _error(exc) from exc

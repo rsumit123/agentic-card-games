@@ -75,7 +75,7 @@ def test_callback_creates_then_loads_same_user(monkeypatch, tmp_path):
             follow_redirects=False,
         )
         assert callback.status_code == 303
-        assert callback.headers["location"] == "/"
+        assert callback.headers["location"] == "http://localhost:5173/"
 
         second_client = TestClient(app)
         second_client.cookies.update(client.cookies)
@@ -125,3 +125,52 @@ def test_logout_requires_csrf_and_clears_secure_session(monkeypatch, tmp_path):
 
         with app.state.session_factory() as db_session:
             assert db_session.query(app.state.UserModel).count() == 1
+
+
+def test_auth_me_returns_user_and_browser_csrf_token(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/auth-me.db")
+    app = create_app()
+    app.state.exchange_code = lambda _code: "opaque-token"
+    app.state.google_token_verifier = lambda _token, **kwargs: claims(nonce=kwargs["expected_nonce"])
+
+    with TestClient(app) as client:
+        login = client.get("/auth/login", follow_redirects=False)
+        state = parse_qs(urlparse(login.headers["location"]).query)["state"][0]
+        client.get(f"/auth/callback?code=code-1&state={state}", follow_redirects=False)
+
+        response = client.get("/auth/me")
+
+    assert response.status_code == 200
+    assert response.json()["user"]["google_subject"] == "google-sub-1"
+    assert response.json()["csrf_token"]
+
+
+def test_cors_allows_configured_frontend_with_credentials(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/cors.db")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://frontend.example")
+    app = create_app()
+
+    response = TestClient(app).options(
+        "/tables",
+        headers={
+            "Origin": "https://frontend.example",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-csrf-token",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://frontend.example"
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
+def test_production_session_cookie_is_cross_origin_secure(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/secure.db")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    app = create_app()
+
+    response = TestClient(app).get("/auth/login", follow_redirects=False)
+
+    cookie = response.headers["set-cookie"].lower()
+    assert "samesite=none" in cookie
+    assert "secure" in cookie
