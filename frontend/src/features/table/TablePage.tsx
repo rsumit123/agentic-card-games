@@ -33,8 +33,11 @@ function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () 
 
 export function TablePage({ view }: { view: TableView }) {
   const { send, reconnect } = useTableSocket(view.id);
-  const { projection, deadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, canAct } = useTable();
-  const status: BarStatus = needsResync ? 'resyncing' : pending ? 'submitting'
+  const { projection, deadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, canAct, session } = useTable();
+  const meSpectating = !!session?.seats.find((seat) => seat.seat_number === projection?.seat_id)?.spectating
+    || (!!projection && !projection.public.players.some((player) => player.seat_id === projection.seat_id));
+  const spectators = session?.seats.filter((seat) => seat.spectating && seat.display_name) ?? [];
+  const status: BarStatus = needsResync ? 'resyncing' : meSpectating ? 'spectating' : pending ? 'submitting'
     : !projection ? 'waiting' : projection.public.street === 'complete' ? 'hand-complete'
     : projection.public.current_seat === projection.seat_id ? 'your-turn' : 'waiting';
   return <main className="table-page">
@@ -48,9 +51,10 @@ export function TablePage({ view }: { view: TableView }) {
     {!projection ? <p aria-busy="true">Opening your seat…</p> : !recoveryNotice && <>
       <Felt projection={projection} />
       <HandResult pub={projection.public} />
+      {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
         error={lastError && lastError.code !== 'stale_revision' ? lastError.message : null}
-        deadline={projection.public.current_seat === projection.seat_id ? <DeadlineRing deadline={deadline} /> : null} />
+        deadline={!meSpectating && projection.public.current_seat === projection.seat_id ? <DeadlineRing deadline={deadline} /> : null} />
     </>}
   </main>;
 }
