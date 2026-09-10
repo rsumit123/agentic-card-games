@@ -1,6 +1,9 @@
 .card { display: inline-block; aspect-ratio: 5 / 7; border-radius: var(--radius-card); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
-.card-sm { width: 36px; } .card-md { width: 56px; } .card-lg { width: 72px; }
+.card-sm { width: 42px; } .card-md { width: 56px; } .card-lg { width: 78px; }
 .card .card-ink { fill: var(--ink); }
-.card[data-color="red"] .card-ink { fill: var(--ember); }
-.card-enter { animation: card-flip 120ms ease-out both; }
-@keyframes card-flip { from { transform: rotateY(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+/* --ember is tuned for a dark ground; on ivory it only reaches 3.78:1. */
+.card[data-color="red"] .card-ink { fill: #A63B26; }
+/* The five cards that actually won the pot. */
+.card-win { box-shadow: 0 0 0 3px var(--brass), 0 0 18px rgba(201, 162, 74, .55); }
+.card-enter { animation: card-flip 260ms cubic-bezier(.2,.7,.3,1) both; }
+@keyframes card-flip { from { transform: rotateY(84deg) translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -21,7 +21,7 @@ describe('ActionBar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Raise' }));
     const input = screen.getByLabelText('Raise to');
     await userEvent.clear(input); await userEvent.type(input, '5');
-    await userEvent.click(screen.getByRole('button', { name: /confirm raise/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Raise to /i }));
     expect(onAct).toHaveBeenCalledWith({ type: 'raise', amount: 20 });
   });
   it('disables everything while submitting and shows the status text', () => {
@@ -29,6 +29,42 @@ describe('ActionBar', () => {
     expect(screen.getByRole('button', { name: 'Fold' })).toBeDisabled();
     expect(screen.getByText(/sending/i)).toBeInTheDocument();
   });
+  it('hides Fold when checking is free, so a free hand cannot be thrown away by accident', () => {
+    const free: LegalAction[] = [{ type: 'fold' }, { type: 'check' }, { type: 'bet', min_amount: 20, max_amount: 1000 }];
+    render(<ActionBar legal={free} canAct onAct={() => {}} status="your-turn" />);
+    expect(screen.queryByRole('button', { name: 'Fold' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Check' })).toBeEnabled();
+  });
+
+  it('asks before putting the whole stack in', async () => {
+    const onAct = vi.fn();
+    render(<ActionBar legal={legal} canAct onAct={onAct} status="your-turn" />);
+    await userEvent.click(screen.getByRole('button', { name: 'All-in 1,000' }));
+    expect(onAct).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: /yes, all in/i }));
+    expect(onAct).toHaveBeenCalledWith({ type: 'all_in' });
+  });
+
+  it('offers pot-fraction shortcuts when sizing a bet', async () => {
+    render(<ActionBar legal={legal} canAct onAct={() => {}} status="your-turn" pot={200} bigBlind={10} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Raise' }));
+    await userEvent.click(screen.getByRole('button', { name: /Pot 200/ }));
+    expect(screen.getByLabelText('Raise to')).toHaveValue(200);
+  });
+
+  it('closes the sizing form when the turn moves on', async () => {
+    const { rerender } = render(<ActionBar legal={legal} canAct onAct={() => {}} status="your-turn" pot={200} bigBlind={10} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Raise' }));
+    expect(screen.getByLabelText('Raise to')).toBeInTheDocument();
+    rerender(<ActionBar legal={[]} canAct={false} onAct={() => {}} status="waiting" pot={200} bigBlind={10} />);
+    expect(screen.queryByLabelText('Raise to')).toBeNull();
+  });
+
+  it('names who the table is waiting for', () => {
+    render(<ActionBar legal={[]} canAct={false} onAct={() => {}} status="waiting" waitingFor="Gemini 3.7 Flash" />);
+    expect(screen.getByText(/Waiting for Gemini 3.7 Flash/)).toBeInTheDocument();
+  });
+
   it('shows a rejection message', () => {
     render(<ActionBar legal={legal} canAct onAct={() => {}} status="your-turn" error="amount exceeds stack" />);
     expect(screen.getByRole('alert')).toHaveTextContent('amount exceeds stack');

@@ -2,30 +2,28 @@ import type { PublicState } from '../../domain/game';
 import { HAND_CATEGORY_LABELS } from '../../domain/game';
 import { PlayingCard } from '../../components/PlayingCard';
 
-export function HandResult({ pub }: { pub: PublicState }) {
+export function HandResult({ pub, mySeat }: { pub: PublicState; mySeat?: number }) {
   if (pub.street !== 'complete' || pub.payouts.length === 0) return null;
 
-  const seatName = (seat: number) => pub.names[seat] ?? `Seat ${seat}`;
+  const seatName = (seat: number) => (seat === mySeat ? 'You' : pub.names[seat] ?? `Seat ${seat}`);
   const winners = new Set(pub.winners);
   const showdown = pub.showdown ?? [];
-  const headline = pub.payouts
-    .map(([seat, amount]) => `${seatName(seat)} wins ${amount.toLocaleString()}`)
-    .join(' and ');
+  const madeLabel = (category?: string) => (category ? HAND_CATEGORY_LABELS[category] ?? category.replace(/_/g, ' ') : null);
 
-  const reasons = pub.payouts
-    .map(([seat]) => showdown.find((entry) => entry.seat_id === seat)?.category)
-    .filter((category): category is string => Boolean(category))
-    .map((category) => HAND_CATEGORY_LABELS[category] ?? category.replace(/_/g, ' '));
-  const why = showdown.length === 0
-    ? 'Everyone else folded, so no cards were shown.'
-    : reasons.length > 0
-      ? `Won with ${reasons.join(' and ')}.`
-      : null;
+  // "You wins" is what you get from a single template. Each winner gets their
+  // own sentence, which also makes a split pot say so.
+  const lines = pub.payouts.map(([seat, amount]) => {
+    const verb = seat === mySeat ? 'win' : 'wins';
+    const made = madeLabel(showdown.find((entry) => entry.seat_id === seat)?.category);
+    return `${seatName(seat)} ${verb} ${amount.toLocaleString()}${made ? ` with ${made}` : ''}`;
+  });
+  const split = pub.payouts.length > 1;
 
   return (
     <div role="status" aria-label="Hand result" className="hand-result">
-      <p className="hand-result-headline">{headline}</p>
-      {why && <p className="hand-result-why">{why}</p>}
+      {split && <p className="hand-result-split">Split pot</p>}
+      {lines.map((line) => <p key={line} className="hand-result-headline">{line}</p>)}
+      {showdown.length === 0 && <p className="hand-result-why">Everyone else folded, so no cards were shown.</p>}
       {showdown.length > 0 && (
         <ul className="hand-result-showdown">
           {showdown.map((entry) => (
@@ -34,7 +32,7 @@ export function HandResult({ pub }: { pub: PublicState }) {
                 {entry.hole_cards.map((card, index) => <PlayingCard key={index} card={card} size="sm" />)}
               </span>
               <span className="who">{seatName(entry.seat_id)}</span>
-              {entry.category && <span className="made">{HAND_CATEGORY_LABELS[entry.category] ?? entry.category.replace(/_/g, ' ')}</span>}
+              {entry.category && <span className="made">{madeLabel(entry.category)}</span>}
             </li>
           ))}
         </ul>

@@ -18,15 +18,22 @@ describe('spectating', () => {
   beforeEach(() => { FakeWebSocket.reset(); useTable.getState().reset(); vi.stubGlobal('WebSocket', FakeWebSocket); });
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  it('shows the spectating status, no action buttons, no deadline, and keeps the zero-chip seat in the roster', () => {
+  it('tells a busted player they are out rather than calling it spectating', () => {
     render(<TablePage view={view} />);
     act(() => { FakeWebSocket.last().open(); FakeWebSocket.last().receive({ ...snap, payload: spectator }); FakeWebSocket.last().receive(session); });
-    expect(screen.getByText('Spectating')).toBeInTheDocument();
+    expect(screen.getByText("You're out of chips")).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /fold|check|call|raise|all-in/i })).toBeNull();
     // A spectator has no action clock of their own, but still watches the
     // active seat's clock run down.
     expect(screen.queryByRole('timer', { name: /seconds left$/ })).toBeNull();
     expect(screen.getByRole('timer', { name: /seconds left for this seat$/ })).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Spectators' })).toHaveTextContent('Bo');
+  });
+
+  it('says "Spectating" for someone watching who still has chips', () => {
+    const watching = { ...session, seats: session.seats.map((seat) => seat.seat_number === 3 ? { ...seat, chip_count: 500 } : seat) };
+    render(<TablePage view={view} />);
+    act(() => { FakeWebSocket.last().open(); FakeWebSocket.last().receive({ ...snap, payload: spectator }); FakeWebSocket.last().receive(watching); });
+    expect(screen.getByText('Spectating')).toBeInTheDocument();
   });
 });

@@ -51,9 +51,29 @@ describe('why the hand was won', () => {
     };
     render(<HandResult pub={pub} />);
 
-    expect(screen.getByRole('status', { name: 'Hand result' })).toHaveTextContent('wins 300');
-    expect(screen.getByText('Won with two pair.')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Hand result' })).toHaveTextContent('wins 300 with two pair');
     expect(screen.getAllByRole('img', { name: /of (spades|hearts|clubs|diamonds)/ })).toHaveLength(4);
+  });
+
+  it('gives every winner of a split pot their own line', () => {
+    const pub = {
+      ...complete,
+      winners: [1, 2],
+      payouts: [[1, 150], [2, 150]] as [number, number][],
+      showdown: [
+        { seat_id: 1, hole_cards: [{ rank: 11, suit: 'diamonds' as const }, { rank: 11, suit: 'hearts' as const }], category: 'pair' },
+        { seat_id: 2, hole_cards: [{ rank: 11, suit: 'spades' as const }, { rank: 11, suit: 'clubs' as const }], category: 'pair' },
+      ],
+    };
+    render(<HandResult pub={pub} />);
+    expect(screen.getByText('Split pot')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Hand result' })).toHaveTextContent('Ana wins 150 with a pair');
+    expect(screen.getByRole('status', { name: 'Hand result' })).toHaveTextContent('Rivers (AI) wins 150 with a pair');
+  });
+
+  it('says "You win", not "You wins"', () => {
+    render(<HandResult pub={{ ...complete, winners: [2], payouts: [[2, 300]] as [number, number][] }} mySeat={2} />);
+    expect(screen.getByRole('status', { name: 'Hand result' })).toHaveTextContent('You win 300');
   });
 
   it('says nothing was shown when everyone folded', () => {

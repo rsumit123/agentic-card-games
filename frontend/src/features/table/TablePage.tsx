@@ -14,6 +14,21 @@ import { SessionLine } from './SessionLine';
 import { useSession } from '../../store/session';
 import { LeaveEndControls } from './LeaveEndControls';
 import { SessionEnded } from './SessionEnded';
+import { DeadlineRing } from './DeadlineRing';
+import { ActionFeed } from './ActionFeed';
+import { NextHand } from './NextHand';
+import { useTableSound } from './useTableSound';
+import { SoundToggle } from './SoundToggle';
+
+/** Engine and database text is written for a log, not for a player. */
+const ERROR_TEXT: Record<string, string> = {
+  invalid_action: 'That move is no longer available. The table has moved on.',
+  invalid_command: 'The table did not understand that. Try again.',
+  persistence_failed: 'The table could not save that action. It will retry.',
+};
+function errorText(error: { code: string; message: string }) {
+  return ERROR_TEXT[error.code] ?? error.message;
+}
 
 function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
@@ -36,36 +51,58 @@ function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () 
 
 export function TablePage({ view, onLeft = () => window.location.assign('/') }: { view: TableView; onLeft?: () => void }) {
   const { send, reconnect } = useTableSocket(view.id);
-  const { projection, deadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, canAct, session } = useTable();
+  const { projection, deadline, revealDeadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, canAct, session } = useTable();
   const myUserId = useSession((state) => state.user?.id ?? null);
   const hostId = session?.host_user_id ?? view.host_user_id;
   const hostSeat = view.seats.find((seat) => seat.user_id === hostId)?.seat_number ?? null;
   const meSpectating = !!session?.seats.find((seat) => seat.seat_number === projection?.seat_id)?.spectating
     || (!!projection && !projection.public.players.some((player) => player.seat_id === projection.seat_id));
   const spectators = session?.seats.filter((seat) => seat.spectating && seat.display_name) ?? [];
-  const status: BarStatus = needsResync ? 'resyncing' : meSpectating ? 'spectating' : pending ? 'submitting'
+  // A seat with no chips left is out of the game, which is not the same thing
+  // as choosing to watch.
+  const myPlayer = projection?.public.players.find((player) => player.seat_id === projection.seat_id);
+  const busted = !!projection && !myPlayer && (session?.seats.find((seat) => seat.seat_number === projection.seat_id)?.chip_count ?? 1) === 0;
+  const status: BarStatus = needsResync ? 'resyncing' : busted ? 'out' : meSpectating ? 'spectating' : pending ? 'submitting'
     : !projection ? 'waiting' : projection.public.street === 'complete' ? 'hand-complete'
     : projection.public.current_seat === projection.seat_id ? 'your-turn' : 'waiting';
+
+  const seatsByNumber = new Map(view.seats.map((seat) => [seat.seat_number, seat]));
+  const turnSeat = projection?.public.current_seat ?? null;
+  const waitingFor = turnSeat !== null && turnSeat !== projection?.seat_id
+    ? projection?.public.names[turnSeat] ?? `Seat ${turnSeat}`
+    : null;
+  // A house player deciding takes a couple of seconds. Without a cue that is
+  // indistinguishable from a table that has stopped.
+  const thinkingSeats = turnSeat !== null && seatsByNumber.get(turnSeat)?.actor_type === 'ai' ? [turnSeat] : [];
+  const myTurn = status === 'your-turn';
+  useTableSound({ myTurn, street: projection?.public.street ?? null, handComplete: projection?.public.street === 'complete', won: !!projection && projection.public.winners.includes(projection.seat_id) });
   return <main className="table-page">
     <header className="table-header">
       <h1>The Common Table</h1>
-      <p>A private table for {view.seat_count}. Blinds {view.small_blind}/{view.big_blind}.</p>
+      <p className="table-blinds">{view.small_blind}/{view.big_blind}</p>
       <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
+      <SoundToggle />
       <ConnectionPill status={connection} />
     </header>
     {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
     {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : !recoveryNotice && <>
-      <Felt projection={projection} deadline={deadline} />
-      <HandResult pub={projection.public} />
+      <Felt projection={projection} deadline={deadline} seatCount={view.seat_count} thinkingSeats={thinkingSeats} />
+      <HandResult pub={projection.public} mySeat={projection.seat_id} />
+      <NextHand deadline={revealDeadline} />
+      <ActionFeed pub={projection.public} mySeat={projection.seat_id} />
       {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
-        error={lastError && lastError.code !== 'stale_revision' ? lastError.message : null} />
+        pot={projection.public.pot} bigBlind={projection.public.big_blind} waitingFor={waitingFor}
+        deadline={myTurn ? <DeadlineRing deadline={deadline} /> : null}
+        error={lastError && lastError.code !== 'stale_revision' ? errorText(lastError) : null} />
       {/* Leaving and ending are rare, so they sit past the action bar rather than
           crowding the header above the table. */}
-      <div className="table-footer">
+      <details className="table-footer">
+        <summary>Table options</summary>
+        <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
         <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection.public.street !== 'complete'} onLeft={onLeft} />
-      </div>
+      </details>
     </>}
   </main>;
 }

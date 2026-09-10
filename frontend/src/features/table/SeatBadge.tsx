@@ -4,57 +4,80 @@ import type { PublicPlayer } from '../../domain/game';
 import { PlayingCard } from '../../components/PlayingCard';
 import { useCountdown } from './useCountdown';
 
-/** One seat: cards beside the name and stack, so the badge stays short enough
- *  to sit near the rail without reaching the community cards. */
-export function SeatBadge({ player, name, isMe, active, holeCards, markers, deadline, side, style }: {
+/** One seat at the table.
+ *
+ *  Your own chair is wide, with cards big enough to read at arm's length.
+ *  Opponents are a narrow vertical token, because two of them have to sit
+ *  side by side on a felt that is only about 320px wide in portrait. */
+export function SeatBadge({ player, name, isMe, active, thinking, holeCards, revealed, markers, deadline, side, won, style }: {
   player: PublicPlayer;
   name: string | null;
   isMe: boolean;
   active: boolean;
+  thinking?: boolean;
   holeCards: Card[] | null;
+  revealed?: Card[] | null;
   markers: string[];
   deadline: string | null;
   side: 'top' | 'bottom';
+  won?: boolean;
   style: CSSProperties;
 }) {
   const { seconds, fraction } = useCountdown(active ? deadline : null);
+  const cards = holeCards ?? revealed ?? null;
   const className = [
     'seat-badge',
+    isMe ? 'seat-hero' : 'seat-opponent',
     active ? 'seat-active' : '',
     player.folded ? 'seat-folded' : '',
-    isMe ? 'seat-me' : '',
+    won ? 'seat-won' : '',
   ].filter(Boolean).join(' ');
 
+  const label = isMe ? 'You' : name ?? `Seat ${player.seat_id}`;
+  const state = player.folded ? 'folded' : player.all_in ? 'all in' : null;
+
   return (
-    <div className={className} style={style} data-seat={player.seat_id} data-side={side} aria-current={active ? 'true' : undefined}>
+    <div
+      className={className}
+      style={style}
+      data-seat={player.seat_id}
+      data-side={side}
+      role="group"
+      aria-label={`${label}, ${player.stack.toLocaleString()} chips${state ? `, ${state}` : ''}${active ? ', to act' : ''}`}
+    >
       <div className="seat-main">
         <div className="seat-cards">
-          {holeCards
-            ? holeCards.map((card, index) => <PlayingCard key={index} card={card} size={isMe ? 'md' : 'sm'} />)
-            : !player.folded && <><PlayingCard back size="sm" /><PlayingCard back size="sm" /></>}
+          {cards
+            ? cards.map((card, index) => <PlayingCard key={index} card={card} size={isMe ? 'lg' : 'sm'} />)
+            : !player.folded && <><PlayingCard back size={isMe ? 'lg' : 'sm'} /><PlayingCard back size={isMe ? 'lg' : 'sm'} /></>}
         </div>
         <div className="seat-info">
-          <span className="seat-name">{isMe ? 'You' : name ?? `Seat ${player.seat_id}`}</span>
+          <span className="seat-name">{label}</span>
           <span className="seat-stack tabular">{player.stack.toLocaleString()}</span>
-          {(player.folded || player.all_in) && (
-            <span className="seat-state">{player.folded ? 'folded' : 'all in'}</span>
-          )}
-          {markers.length > 0 && (
-            <span className="seat-markers">{markers.map((label) => <span key={label} className="marker">{label}</span>)}</span>
-          )}
+          {state && <span className="seat-state">{state}</span>}
         </div>
       </div>
+
+      {markers.length > 0 && (
+        <span className="seat-markers">{markers.map((marker) => <span key={marker} className="marker">{marker}</span>)}</span>
+      )}
 
       {player.street_contribution > 0 && (
         <span className="seat-bet tabular" aria-label={`bet ${player.street_contribution}`}>{player.street_contribution}</span>
       )}
 
-      {active && seconds !== null && (
+      {/* Somebody is always to act. Saying who, and showing that an AI seat is
+          working rather than stuck, is the difference between a pause and a
+          hang. */}
+      {thinking && !active && <span className="seat-thinking" aria-hidden="true"><i /><i /><i /></span>}
+
+      {active && seconds !== null && !isMe && (
         <span className={`seat-timer ${seconds <= 5 ? 'seat-timer-late' : ''}`} role="timer" aria-label={`${seconds} seconds left for this seat`}>
           <span className="seat-timer-track"><span className="seat-timer-bar" style={{ transform: `scaleX(${fraction})` }} /></span>
           <span className="seat-timer-count tabular">{seconds}s</span>
         </span>
       )}
+      {active && thinking && <span className="seat-thinking seat-thinking-inline" aria-hidden="true"><i /><i /><i /></span>}
     </div>
   );
 }

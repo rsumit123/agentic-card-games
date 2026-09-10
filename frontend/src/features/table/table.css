@@ -3,8 +3,12 @@
 
 .felt {
   position: relative;
+  /* A long press on a card raised the text-selection callout on iOS. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   aspect-ratio: 16 / 10;
-  height: min(52vh, 470px);
+  height: min(52svh, 470px);
   width: auto;
   max-width: 100%;
   margin: 0 auto;
@@ -30,6 +34,7 @@
 
 .community {
   position: absolute;
+  z-index: 2;
   left: 50%;
   top: 52%;
   transform: translate(-50%, -50%);
@@ -38,21 +43,45 @@
 }
 
 /* ---- Seats -------------------------------------------------------------- */
+/* Two opponent badges have to sit side by side on a felt that is only about
+   320px wide in portrait, so the opponent token is capped hard and stacks its
+   name under its cards. Your own chair can afford to be wide. */
 .seat-badge {
   position: absolute;
+  z-index: 3;
   transform: translate(-50%, -50%);
   padding: 7px 10px;
   border-radius: 14px;
-  background: rgba(12, 22, 17, 0.86);
+  background: rgba(12, 22, 17, 0.9);
   border: 2px solid transparent;
   color: var(--ivory);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
+.seat-opponent {
+  width: 104px;
+  padding: 6px;
+  border-radius: 13px;
+}
+.seat-opponent .seat-main { display: grid; justify-items: center; gap: 4px; }
+.seat-opponent .seat-info { justify-items: center; text-align: center; }
+.seat-opponent .seat-name { font-size: 12px; max-width: 92px; }
+.seat-opponent .seat-stack { font-size: 15px; }
+
+.seat-hero .seat-main { display: flex; align-items: center; gap: 10px; }
+.seat-hero .seat-cards { gap: 5px; }
+
 .seat-active {
   border-color: var(--copper);
   box-shadow: 0 0 0 4px rgba(184, 118, 58, 0.22), 0 6px 18px rgba(0, 0, 0, 0.45);
 }
-.seat-folded { opacity: 0.45; }
+/* Dimming the whole badge took the word "folded" down to 2.3:1, so the state
+   label keeps its own opacity. */
+.seat-folded { opacity: 0.5; }
+.seat-folded .seat-state { opacity: 2; }
+.seat-won {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 5px rgba(201, 162, 74, 0.3), 0 0 26px rgba(201, 162, 74, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
 
 .seat-main { display: flex; align-items: center; gap: 9px; }
 .seat-cards { display: flex; gap: 3px; }
@@ -67,7 +96,16 @@
 }
 .seat-stack { font-size: 17px; font-weight: 600; line-height: 1.15; }
 .seat-state { font-size: 11px; color: var(--mist-dim); }
-.seat-markers { display: flex; gap: 4px; margin-top: 2px; }
+
+/* Dealer and blind markers ride the edge of the badge rather than taking a
+   line inside it, which is what made the opponent token too tall. */
+.seat-markers {
+  position: absolute;
+  top: -9px;
+  right: -6px;
+  display: flex;
+  gap: 3px;
+}
 .marker {
   width: 20px;
   height: 20px;
@@ -78,6 +116,7 @@
   font-weight: 600;
   background: var(--ivory);
   color: var(--ink);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
 /* The chips a seat has pushed out sit between that seat and the pot. */
@@ -97,12 +136,26 @@
 .seat-badge[data-side='top'] .seat-bet { bottom: -11px; }
 .seat-badge[data-side='bottom'] .seat-bet { top: -11px; }
 
+/* A house player deciding looks exactly like a stuck table without this. */
+.seat-thinking { position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%); display: flex; gap: 4px; }
+.seat-thinking-inline { bottom: -13px; }
+.seat-thinking i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brass);
+  animation: seat-think 1.05s ease-in-out infinite;
+}
+.seat-thinking i:nth-child(2) { animation-delay: 0.15s; }
+.seat-thinking i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes seat-think { 0%, 100% { opacity: 0.28; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
 .seat-timer { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.seat-timer-track { flex: 1; height: 4px; border-radius: 2px; background: rgba(243, 236, 218, 0.16); overflow: hidden; }
+.seat-timer-track { flex: 1; height: 5px; border-radius: 3px; background: rgba(243, 236, 218, 0.16); overflow: hidden; }
 .seat-timer-bar {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--moss);
   transform-origin: left center;
   transition: transform 250ms linear;
@@ -132,32 +185,103 @@
     opacity 620ms ease-in, scale 620ms ease-in;
   pointer-events: none;
 }
-.chip-flight[data-arrived='true'] { opacity: 0; scale: 0.62; }
+.chip-flight-bet[data-arrived='true'] { opacity: 0; scale: 0.62; }
+/* The pot travelling to the winner lands rather than dissolves. */
+.chip-flight-award { z-index: 6; background: radial-gradient(circle at 34% 30%, #F0D68C, var(--brass) 58%, #9A7529); }
+.chip-flight-award[data-arrived='true'] { scale: 1.18; opacity: 0; transition-duration: 1000ms; transition-delay: 0ms, 0ms, 620ms, 620ms; }
+
+/* Pot layers, when a short stack has split the middle into more than one. */
+.pot-split { display: grid; gap: 4px; }
+.pot-layer { display: grid; line-height: 1.15; }
+.pot-layer-name { font-size: 10px; letter-spacing: 0.07em; color: var(--mist-dim); text-transform: uppercase; }
+.pot-layer b { font-family: var(--font-display); font-size: 21px; color: var(--ivory); }
+.pot-layer small { font-size: 10px; color: var(--mist-dim); }
+
+/* Said once, loudly, when you take it down. */
+.felt-shout {
+  margin: 6px 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--brass);
+  animation: shout 420ms cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes shout { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: none; } }
 
 /* ---- Table chrome ------------------------------------------------------- */
 .table-page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 0; }
 
 .table-header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 16px;
-  margin-bottom: 6px;
-}
-.table-header h1 { font-size: 21px; font-variation-settings: 'opsz' 60; }
-.table-header p { margin: 0; font-size: 13px; color: var(--mist); }
-.table-header .pill { margin-left: auto; align-self: center; }
-.session-line { margin: 0; font-size: 13px; color: var(--mist); }
-
-.table-footer {
-  display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
-  max-width: 780px;
-  margin: 18px auto 40px;
-  padding: 0 4px;
+  margin-bottom: 4px;
 }
+.table-header .session-line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-header h1 { white-space: nowrap; }
+.table-header h1 { font-size: 21px; font-variation-settings: 'opsz' 60; }
+.table-header p { margin: 0; font-size: 13px; color: var(--mist); }
+.table-header .pill { flex: none; }
+.session-line { margin: 0; font-size: 13px; color: var(--mist); }
+
+/* Leaving and ending are rare. Behind a disclosure they stop competing with
+   the action bar for the bottom of the screen. */
+.table-footer { max-width: 780px; margin: 14px auto 32px; padding: 0 4px; }
+.table-footer > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--mist-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+.table-footer[open] > summary { margin-bottom: 10px; }
+.table-footer .session-line { margin: 0 0 10px; }
+@media (max-width: 899px) { .table-footer .session-line { display: block; } }
+
+.table-blinds {
+  padding: 2px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sound-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 16px;
+  cursor: pointer;
+}
+.sound-toggle[aria-pressed='true'] { border-color: var(--copper); }
+
+/* What has actually happened this hand. */
+.action-feed {
+  list-style: none;
+  max-width: 780px;
+  margin: 10px auto 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--mist);
+}
+.action-feed li { display: flex; gap: 8px; align-items: baseline; }
+.action-feed-street {
+  min-width: 52px;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--mist-dim);
+}
+
+.next-hand { margin: 8px 0 0; text-align: center; font-size: 14px; color: var(--brass); }
 .leave-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .leave-end .btn { min-height: 38px; padding: 8px 16px; font-size: 14px; }
 .leave-end [role='group'] {
@@ -192,7 +316,7 @@
   bottom: 0;
   margin: 20px auto 0;
   max-width: 780px;
-  padding: 16px 18px 20px;
+  padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
   border-top: 2px solid var(--walnut-light);
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background: linear-gradient(180deg, rgba(18, 33, 26, 0.9), rgba(13, 25, 19, 0.99));
@@ -210,22 +334,71 @@
 }
 .action-error { text-align: center; margin: 0 0 12px; }
 .action-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); gap: 10px; }
+/* Fold is the misfire everyone makes, so it keeps its distance from Call. */
+.action-buttons .btn-danger { grid-column: 1 / -1; justify-self: start; min-width: 132px; }
+.btn-allin { border-color: rgba(196, 85, 61, 0.5); color: var(--ember-text); }
 .action-buttons .btn { min-height: 52px; font-size: 16px; }
 
-.raise { display: grid; gap: 12px; max-width: 420px; margin: 0 auto; }
+.raise { display: grid; gap: 12px; max-width: 460px; margin: 0 auto; }
+
+/* Presets carry almost all the traffic; the slider is the escape hatch. */
+.raise-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.raise-preset {
+  display: grid;
+  gap: 1px;
+  min-height: 52px;
+  padding: 7px 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--mist);
+  font: inherit;
+  cursor: pointer;
+}
+.raise-preset span { font-size: 11px; letter-spacing: 0.02em; }
+.raise-preset b { font-size: 14px; color: var(--ivory); }
+.raise-preset[aria-pressed='true'] { border-color: var(--copper); background: rgba(184, 118, 58, 0.18); }
+
+.raise-amount { display: grid; gap: 5px; }
 .raise label { font-size: 13px; color: var(--mist); }
 .raise input[type='number'] {
   min-height: 48px;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   background: var(--surface-sunk);
   font-size: 19px;
   font-variant-numeric: tabular-nums;
 }
-.raise input[type='range'] { width: 100%; accent-color: var(--copper); }
+
+/* The UA default thumb is far under the 44px touch floor. */
+.raise-slider { width: 100%; height: 44px; background: transparent; accent-color: var(--copper); -webkit-appearance: none; appearance: none; }
+.raise-slider::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: var(--surface-sunk); border: 1px solid var(--line-strong); }
+.raise-slider::-moz-range-track { height: 8px; border-radius: 4px; background: var(--surface-sunk); border: 1px solid var(--line-strong); }
+.raise-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 30px; height: 30px;
+  margin-top: -12px;
+  border-radius: 50%;
+  border: 2px solid var(--ivory);
+  background: var(--copper);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.raise-slider::-moz-range-thumb {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--ivory);
+  background: var(--copper);
+}
 .raise small { color: var(--mist-dim); font-size: 12px; }
-.raise .btn { width: 100%; }
+.raise-confirm { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.raise-confirm .btn { width: 100%; min-height: 52px; }
+
+/* All-in is the one action that can end the session in a tap. */
+.action-confirm { display: grid; gap: 12px; text-align: center; }
+.action-confirm p { margin: 0; font-size: 15px; color: var(--mist); }
+.action-confirm-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.action-confirm-buttons .btn { min-height: 52px; }
 
 /* ---- How the hand ended ------------------------------------------------- */
 .hand-result {
@@ -274,21 +447,35 @@
 
 /* ---- Phones ------------------------------------------------------------- */
 @media (max-width: 899px) {
-  .table-page { padding: 14px 12px 0; }
-  .table-header h1 { font-size: 19px; }
-  .table-header .pill { margin-left: 0; }
-  .felt-wrap { padding: 8px 8px 58px; }
-  .felt { aspect-ratio: 10 / 12; height: min(46vh, 420px); width: auto; border-radius: 45% / 50%; }
-  .pot { top: 34%; }
-  .pot .chip span { font-size: 26px; }
-  .community { top: 52%; gap: 4px; }
+  .table-page { padding: 10px 10px 0; }
+  .table-header { gap: 8px; }
+  .table-header h1 { font-size: 15px; }
+  .table-blinds { font-size: 12px; }
+  /* Who the host is matters between hands, not during one. It lives in the
+     table options on a phone rather than squeezing the title. */
+  .table-header .session-line { display: none; }
+  .felt-wrap { padding: 6px 4px 8px; }
+  .felt { aspect-ratio: 10 / 11.5; height: min(44svh, 400px); width: auto; border-radius: 45% / 50%; }
+  .pot { top: 36%; }
+  .pot .chip span { font-size: 24px; }
+  .community { top: 57%; gap: 3px; }
+  .community .card-md { width: 52px; }
   .seat-badge { padding: 6px 8px; border-radius: 12px; }
+  .seat-opponent { width: 100px; padding: 5px; }
+  .seat-opponent .seat-cards .card-sm { width: 40px; }
+  .seat-hero .seat-cards .card-lg { width: 72px; }
   .seat-main { gap: 7px; }
   .seat-name { font-size: 12px; max-width: 96px; }
   .seat-stack { font-size: 15px; }
-  .action-bar { margin-top: 12px; padding: 14px 12px 18px; }
-  .action-status { font-size: 18px; margin-bottom: 10px; }
-  .action-buttons { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .action-buttons .btn { min-height: 46px; font-size: 15px; }
+  .action-bar { margin-top: 8px; padding: 12px 10px calc(14px + env(safe-area-inset-bottom)); }
+  .action-status { font-size: 17px; margin-bottom: 8px; }
+  .action-buttons { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .action-buttons .btn-danger { grid-column: 1 / -1; justify-self: start; min-width: 40%; margin-bottom: 8px; }
+  .raise-presets { gap: 6px; }
+  .raise-preset { min-height: 50px; }
+  .raise-preset b { font-size: 13px; }
+  .leave-end .btn { min-height: 46px; }
+  .action-buttons .btn { min-height: 50px; font-size: 15px; }
   .hand-result-headline { font-size: 19px; }
+  .table-footer { margin: 12px auto 24px; }
 }

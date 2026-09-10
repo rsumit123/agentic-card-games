@@ -1,16 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SeatProjection } from '../../domain/game';
 import { PlayingCard } from '../../components/PlayingCard';
-import { Chip } from '../../components/Chip';
 import { SeatBadge } from './SeatBadge';
-import { seatPositions } from './seatLayout';
+import { seatPositions, HERO_SLOT } from './seatLayout';
 import { ChipFlight, type Flight } from './ChipFlight';
+import { Pots } from './Pots';
+import { useRunout } from './useRunout';
 import './table.css';
 
-export function Felt({ projection, deadline = null }: { projection: SeatProjection; deadline?: string | null }) {
+export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [] }: {
+  projection: SeatProjection;
+  deadline?: string | null;
+  seatCount?: number;
+  thinkingSeats?: number[];
+}) {
   const { public: pub, seat_id: me, hole_cards } = projection;
-  const positions = seatPositions(pub.players.map((player) => player.seat_id), me);
+  const positions = seatPositions(pub.players.map((player) => player.seat_id), me, seatCount);
   const flights = useChipFlights(pub.players.map((player) => ({ seat: player.seat_id, bet: player.street_contribution })), positions);
+  // The server resolves an all-in in a single step. Dealing the board out over
+  // a couple of seconds is the whole drama of the hand.
+  const board = useRunout(pub.community_cards, pub.street);
+  const complete = pub.street === 'complete';
+  const winners = new Set(pub.winners);
+  const revealedBySeat = new Map(pub.showdown.map((entry) => [entry.seat_id, entry.hole_cards]));
+  const winningCards = new Set(
+    pub.showdown.filter((entry) => winners.has(entry.seat_id))
+      .flatMap((entry) => entry.best_five ?? [])
+      .map((card) => `${card.rank}${card.suit}`),
+  );
+
   // Heads-up puts the dealer and small blind on one seat. Collect the badges per
   // seat and hand them to the seat itself, so they can never land on the cards.
   const markersBySeat = new Map<number, string[]>();
@@ -21,17 +39,35 @@ export function Felt({ projection, deadline = null }: { projection: SeatProjecti
   addMarker(pub.dealer_seat, 'D');
   addMarker(pub.small_blind_seat, 'SB');
   addMarker(pub.big_blind_seat, 'BB');
+
+  const heroWon = complete && winners.has(me);
+  const potHome = complete && pub.winners.length > 0
+    ? (positions[pub.winners[0]] ?? HERO_SLOT)
+    : null;
+
   return <section className="felt-wrap" aria-label="Table">
-    <div className="felt">
-      <div className="pot"><span>Pot</span><Chip amount={pub.pot} /></div>
-      <div className="community" aria-label="Community cards">{pub.community_cards.map((card, index) => <PlayingCard key={`${card.rank}${card.suit}${index}`} card={card} size="md" />)}</div>
+    <div className="felt" data-street={pub.street}>
+      <Pots pub={pub} />
+      <div className="community" role="group" aria-label="Community cards">
+        {board.cards.map((card, index) => <PlayingCard key={`${card.rank}${card.suit}${index}`} card={card} size="md"
+          enter={index >= board.cards.length - board.fresh}
+          highlight={winningCards.has(`${card.rank}${card.suit}`)} />)}
+      </div>
       {pub.players.map((player) => <SeatBadge key={player.seat_id} player={player} name={pub.names[player.seat_id] ?? null} isMe={player.seat_id === me} active={pub.current_seat === player.seat_id}
-        holeCards={player.seat_id === me ? hole_cards : null} markers={markersBySeat.get(player.seat_id) ?? []} deadline={deadline}
+        thinking={thinkingSeats.includes(player.seat_id)}
+        holeCards={player.seat_id === me ? hole_cards : null}
+        revealed={revealedBySeat.get(player.seat_id) ?? null}
+        won={winners.has(player.seat_id)}
+        markers={markersBySeat.get(player.seat_id) ?? []} deadline={deadline}
         side={positions[player.seat_id].y < 50 ? 'top' : 'bottom'} style={{ left: `${positions[player.seat_id].x}%`, top: `${positions[player.seat_id].y}%` }} />)}
       {flights.map((flight) => <ChipFlight key={flight.id} flight={flight} />)}
+      {potHome && <ChipFlight key={`pot-${pub.hand_number ?? 0}`} flight={{ id: -1, from: POT_ANCHOR, amount: pub.payouts.reduce((total, [, amount]) => total + amount, 0) }} to={potHome} kind="award" />}
     </div>
+    {heroWon && <p className="felt-shout" role="presentation">You win</p>}
   </section>;
 }
+
+const POT_ANCHOR = { x: 50, y: 36 };
 
 /** Spawn a chip whenever a seat's bet for this street grows. */
 function useChipFlights(bets: { seat: number; bet: number }[], positions: Record<number, { x: number; y: number }>) {

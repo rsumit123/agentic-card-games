@@ -18,7 +18,10 @@ describe('Felt', () => {
     render(<Felt projection={snap.payload} />);
     const active = document.querySelector('.seat-active');
     expect(active).not.toBeNull();
-    expect(active).toHaveAttribute('aria-current', 'true');
+    // aria-current on a bare div is not exposed, so the badge is a labelled
+    // group and the label says whose turn it is.
+    expect(active).toHaveAttribute('role', 'group');
+    expect(active?.getAttribute('aria-label')).toContain('to act');
     expect(active).toHaveAttribute('data-seat', String(snap.payload.public.current_seat));
   });
 });

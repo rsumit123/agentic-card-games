@@ -6,10 +6,14 @@ export interface PublicPlayer {
   contribution: number; street_contribution: number; has_acted: boolean;
 }
 /** One action somebody took this hand. Public: everyone watched it happen. */
-export interface TableAction { seat_id: number; street: Street; type: string; amount: number | null }
+export interface TableAction { seat_id: number; street: Street; type: string; amount: number | null; timeout?: boolean }
+
+/** A pot layer. With more than two players and a short stack there is more
+ *  than one, and they have different sets of players eligible to win them. */
+export interface PotLayer { amount: number; eligible_seats: number[] }
 
 /** Cards turned face up at the end of a contested hand. */
-export interface ShowdownHand { seat_id: number; hole_cards: Card[]; category?: string }
+export interface ShowdownHand { seat_id: number; hole_cards: Card[]; category?: string; best_five?: Card[] }
 
 /** The engine's category names, said the way a dealer would say them. */
 export const HAND_CATEGORY_LABELS: Record<string, string> = {
@@ -31,6 +35,8 @@ export interface PublicState {
   winners: number[]; payouts: [number, number][]; players: PublicPlayer[];
   showdown: ShowdownHand[];
   actions: TableAction[];
+  pots?: PotLayer[];
+  hand_number?: number;
   names: Record<number, string | null>;
 }
 export type LegalAction =

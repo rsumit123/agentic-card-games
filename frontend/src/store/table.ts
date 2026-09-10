@@ -10,6 +10,7 @@ interface TableState {
   revision: number;
   deadline: string | null;
   recoveryNotice: string | null;
+  revealDeadline: string | null;
   connection: SocketStatus;
   pending: { key: string; action: Action } | null;
   lastError: { code: ErrorCode; message: string } | null;
@@ -30,6 +31,7 @@ const initial = {
   revision: -1,
   deadline: null,
   recoveryNotice: null,
+  revealDeadline: null,
   connection: 'closed' as SocketStatus,
   pending: null,
   lastError: null,
@@ -43,6 +45,7 @@ export const useTable = create<TableState>((set, get) => ({
     if (event.type === 'session') { set({ session: event }); return; }
     if (event.type === 'snapshot') {
       set({ projection: event.payload, revision: event.revision, deadline: event.deadline,
+        revealDeadline: event.reveal_deadline ?? null,
         recoveryNotice: event.recovery_notice ?? get().recoveryNotice, needsResync: false, lastError: null });
       return;
     }
@@ -51,7 +54,8 @@ export const useTable = create<TableState>((set, get) => ({
       return;
     }
     if (event.revision <= get().revision) return;
-    set({ projection: event.payload, revision: event.revision, deadline: event.deadline, lastError: null,
+    set({ projection: event.payload, revision: event.revision, deadline: event.deadline,
+      revealDeadline: event.reveal_deadline ?? null, lastError: null,
       ...(event.type === 'ack' ? { pending: null } : {}) });
   },
   setConnection: (connection) => set({ connection }),
