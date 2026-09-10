@@ -1,0 +1,77 @@
+{
+  "type": "snapshot",
+  "revision": 0,
+  "payload": {
+    "public": {
+      "street": "preflop",
+      "community_cards": [],
+      "pot": 15,
+      "current_seat": 1,
+      "dealer_seat": 1,
+      "small_blind_seat": 1,
+      "big_blind_seat": 2,
+      "small_blind": 5,
+      "big_blind": 10,
+      "current_bet": 10,
+      "min_raise": 10,
+      "winners": [],
+      "payouts": [],
+      "players": [
+        {
+          "seat_id": 1,
+          "stack": 995,
+          "folded": false,
+          "all_in": false,
+          "contribution": 5,
+          "street_contribution": 5,
+          "has_acted": false
+        },
+        {
+          "seat_id": 2,
+          "stack": 990,
+          "folded": false,
+          "all_in": false,
+          "contribution": 10,
+          "street_contribution": 10,
+          "has_acted": false
+        }
+      ],
+      "names": {
+        "1": "Ana",
+        "2": "Rivers (AI)"
+      }
+    },
+    "hole_cards": [
+      {
+        "rank": 4,
+        "suit": "clubs"
+      },
+      {
+        "rank": 2,
+        "suit": "clubs"
+      }
+    ],
+    "seat_id": 1,
+    "legal_actions": [
+      {
+        "type": "fold"
+      },
+      {
+        "type": "call",
+        "amount": 5
+      },
+      {
+        "type": "raise",
+        "min_amount": 20,
+        "max_amount": 1000
+      },
+      {
+        "type": "all_in",
+        "amount": 1000
+      }
+    ],
+    "hand_rank": null
+  },
+  "deadline": "2026-09-10T12:00:30+00:00",
+  "recovery_notice": null
+}
