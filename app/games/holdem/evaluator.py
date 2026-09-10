@@ -71,11 +71,21 @@ def _evaluate_five(cards: tuple[Card, ...]) -> HandRank:
     return HandRank(0, tuple(ranks))
 
 
-def evaluate_hand(cards: Iterable[Card]) -> HandRank:
+def best_hand(cards: Iterable[Card]) -> tuple[HandRank, tuple[Card, ...]]:
+    """The best five-card hand available, and the cards that make it.
+
+    Keyed on the rank alone so ties are broken by combination order rather than
+    by card identity: HandRank orders the hands, Card does not.
+    """
     cards = tuple(cards)
     if len(cards) < 5 or len(cards) > 7:
         raise ValueError("a Hold'em hand must contain five to seven cards")
-    return max(_evaluate_five(combo) for combo in combinations(cards, 5))
+    ranked = ((_evaluate_five(combo), combo) for combo in combinations(cards, 5))
+    return max(ranked, key=lambda pair: pair[0])
+
+
+def evaluate_hand(cards: Iterable[Card]) -> HandRank:
+    return best_hand(cards)[0]
 
 
 def compare_hands(first: Iterable[Card], second: Iterable[Card]) -> int:

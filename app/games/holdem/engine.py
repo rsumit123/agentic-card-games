@@ -5,7 +5,7 @@ from typing import Iterable, Mapping
 
 from ..cards import Card, shuffle_deck, standard_deck
 from .actions import HoldemAction, normalize_action
-from .evaluator import HandRank, evaluate_hand
+from .evaluator import HandRank, best_hand, evaluate_hand
 from .state import HoldemState, PlayerState
 
 
@@ -409,7 +409,9 @@ def showdown_hands(state: HoldemState) -> tuple[dict[str, object], ...]:
     for player in contenders:
         entry: dict[str, object] = {"seat_id": player.seat_id, "hole_cards": player.hole_cards}
         if len(player.hole_cards) + len(state.community_cards) >= 5:
-            entry["category"] = evaluate_hand(player.hole_cards + state.community_cards).category_name
+            rank, best_five = best_hand(player.hole_cards + state.community_cards)
+            entry["category"] = rank.category_name
+            entry["best_five"] = best_five
         revealed.append(entry)
     return tuple(revealed)
 
@@ -417,6 +419,7 @@ def showdown_hands(state: HoldemState) -> tuple[dict[str, object], ...]:
 def public_projection(state: HoldemState) -> dict[str, object]:
     return {
         "street": state.street,
+        "hand_number": state.hand_number,
         "community_cards": state.community_cards,
         "pot": state.pot,
         "pots": pot_layers(state),

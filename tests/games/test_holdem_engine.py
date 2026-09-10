@@ -237,3 +237,26 @@ def test_resolve_showdown_pays_out_exactly_the_published_pot_layers():
     assert sum(amount for _, amount in resolved.payouts) == sum(layer["amount"] for layer in layers)
     assert sum(amount for _, amount in resolved.payouts) == state.pot
     assert set(resolved.winners) <= {seat for layer in layers for seat in layer["eligible_seats"]}
+
+
+def test_public_projection_carries_the_hand_number():
+    state = start_hand({0: 1000, 1: 1000}, random_bytes=RANDOM_BYTES, hand_number=7)
+
+    assert public_projection(state)["hand_number"] == 7
+
+
+def test_showdown_reveals_the_five_cards_that_won():
+    from app.games.holdem.engine import showdown_hands
+
+    state = start_hand({1: 1000, 2: 1000}, random_bytes=RANDOM_BYTES)
+    while state.street != "complete" and state.current_seat is not None:
+        state = apply_action(state, state.current_seat, {"type": "all_in"})
+
+    revealed = showdown_hands(state)
+
+    assert len(revealed) == 2
+    for entry in revealed:
+        best_five = entry["best_five"]
+        assert len(best_five) == 5
+        available = set(state.player(entry["seat_id"]).hole_cards) | set(state.community_cards)
+        assert set(best_five) <= available
