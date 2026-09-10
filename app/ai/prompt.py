@@ -47,9 +47,18 @@ def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[st
     me = next((player for player in public.get("players", ()) if player.get("seat_id") == seat_id), {})
     to_call = max(0, int(public.get("current_bet", 0)) - int(me.get("street_contribution", 0)))
 
+    street = public.get("street")
+    big_blind = int(public.get("big_blind", 0))
+    unraised = street == "preflop" and int(public.get("current_bet", 0)) <= big_blind
+
     opponents = [
         f"seat {player['seat_id']} has {player['stack']} chips"
-        + (f", {player['street_contribution']} in front" if player.get("street_contribution") else "")
+        + (
+            f", {player['street_contribution']} in front"
+            + (" (that is the big blind, not a raise)" if unraised and player.get("street_contribution") == big_blind else "")
+            if player.get("street_contribution")
+            else ""
+        )
         + (" (folded)" if player.get("folded") else " (all in)" if player.get("all_in") else "")
         for player in public.get("players", ())
         if player.get("seat_id") != seat_id
@@ -72,6 +81,8 @@ def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[st
     ]
     if roles:
         lines.append("You are " + " and ".join(roles) + " this hand.")
+    if unraised:
+        lines.append("Nobody has raised. The only chips in the pot are the blinds.")
     if to_call > 0:
         pot = int(public.get("pot", 0))
         share = round(100 * to_call / (pot + to_call)) if pot + to_call else 0
@@ -101,7 +112,9 @@ How to play well:
 - Checking and calling are fine when your hand is playable but not strong.
 - A cheap call is not the same as an expensive one. When the amount to call is small next
   to the pot, folding a playable hand is usually a mistake. Before the flop, posting or
-  completing a blind is not the same as facing a raise. Folding every hand loses slowly."""
+  completing a blind is not the same as facing a raise. Folding every hand loses slowly.
+- Heads-up, hands play much better than they would at a full table. When nobody has raised
+  and you are on the button or in the small blind, most reasonable hands are worth playing."""
 
 REPLY_FORMAT = """Reply with JSON only, no prose outside it:
 {"reasoning": "<one short sentence explaining the choice>",
