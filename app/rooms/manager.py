@@ -186,6 +186,8 @@ class RoomManager:
         self._session_states[table_id] = next_state
         if not next_state.pending_leaves:
             self._persist_session_state(table_id, next_state)
+        if next_state.status != "in_progress":
+            self._reveal_deadlines.pop(table_id, None)
         self.publish_session(table_id)
 
     def end(self, table_id: int, user_id: int) -> None:
@@ -199,6 +201,8 @@ class RoomManager:
         )
         self._session_states[table_id] = next_state
         self._persist_session_state(table_id, next_state)
+        if next_state.status != "in_progress":
+            self._reveal_deadlines.pop(table_id, None)
         self.publish_session(table_id)
 
     def _after_transition(self, table_id: int, actor: RoomActor, before) -> None:
@@ -250,7 +254,8 @@ class RoomManager:
 
     def _start_next_hand(self, table_id: int, actor: RoomActor) -> None:
         state = self._session_states.get(table_id)
-        if state is None:
+        if state is None or state.status != "in_progress":
+            self._reveal_deadlines.pop(table_id, None)
             return
         stacks = {seat.seat_id: seat.chips for seat in state.seats if seat.present and seat.chips > 0}
         if len(stacks) < 2:
