@@ -1,0 +1,9 @@
+:root {
+  --forest: #12211A; --felt: #1F5B3B; --felt-deep: #163F2B;
+  --walnut: #5A3A22; --walnut-light: #8A5B36;
+  --ivory: #F3ECDA; --ink: #0F1A14; --copper: #B8763A; --brass: #C9A24A;
+  --mist: #B9C6BD; --ember: #C4553D; --moss: #4FA37A;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --radius-control: 10px; --radius-card: 6px;
+}
