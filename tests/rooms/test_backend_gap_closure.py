@@ -403,3 +403,45 @@ def test_reveal_deadline_is_absent_when_the_session_is_ending(tmp_path):
     manager.submit(table_id, 1, {"expected_revision": 0, "idempotency_key": "end-fold", "action": {"type": "fold"}})
 
     assert manager.reveal_deadline(table_id) is None
+
+
+def test_leaving_on_your_turn_folds_immediately_instead_of_stalling_the_table(tmp_path):
+    settings, sessions, table_id = _in_progress_table(tmp_path, "leave-on-turn")
+    manager = RoomManager(session_factory=sessions)
+    actor = manager.ensure_actor_for_table(table_id, sessions, settings)
+    assert actor.state.current_seat == 1
+
+    manager.leave(table_id, 1)
+
+    assert actor.state.player(1).folded is True
+    assert actor.state.street == "complete"
+    entry = actor.state.action_log[-1]
+    assert entry["type"] == "fold"
+    assert entry.get("timeout") in (None, False), "leaving is not a timeout"
+    with sessions() as session:
+        seats = session.query(Seat).filter(Seat.table_id == table_id).order_by(Seat.seat_number).all()
+    assert seats[0].present is False
+
+
+def test_a_leaver_is_folded_when_the_turn_reaches_them(tmp_path):
+    settings, sessions, table_id = _in_progress_table(tmp_path, "leave-off-turn")
+    manager = RoomManager(session_factory=sessions)
+    actor = manager.ensure_actor_for_table(table_id, sessions, settings)
+
+    manager.leave(table_id, 2)
+
+    assert manager.session_event(table_id)["pending_leaves"] == [2]
+    assert actor.state.street == "preflop", "seat 2 is not on turn yet"
+
+    manager.submit(table_id, 1, {"expected_revision": 0, "idempotency_key": "call-1", "action": {"type": "call"}})
+
+    assert actor.state.player(2).folded is True
+    assert actor.state.street == "complete"
+
+
+def test_session_event_lists_no_pending_leaves_when_nobody_is_leaving(tmp_path):
+    settings, sessions, table_id = _in_progress_table(tmp_path, "no-pending-leaves")
+    manager = RoomManager(session_factory=sessions)
+    manager.ensure_actor_for_table(table_id, sessions, settings)
+
+    assert manager.session_event(table_id)["pending_leaves"] == []

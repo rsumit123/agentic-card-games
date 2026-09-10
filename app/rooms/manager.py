@@ -128,6 +128,7 @@ class RoomManager:
         result = actor.submit(command, seat_id=seat_id)
         if isinstance(result, Ack):
             self._after_transition(table_id, actor, before)
+            self._fold_pending_leavers(table_id, actor)
         return result
 
     async def run_once(self, table_id: int) -> None:
@@ -146,6 +147,7 @@ class RoomManager:
         timeout_result = actor.tick(now)
         if isinstance(timeout_result, Ack):
             self._after_transition(table_id, actor, before)
+            self._fold_pending_leavers(table_id, actor)
             self._publish_state(table_id, actor)
             return
 
@@ -215,6 +217,8 @@ class RoomManager:
             self._persist_session_state(table_id, next_state)
         if next_state.status != "in_progress":
             self._reveal_deadlines.pop(table_id, None)
+        if actor is not None and self._fold_pending_leavers(table_id, actor):
+            self._publish_state(table_id, actor)
         self.publish_session(table_id)
 
     def end(self, table_id: int, user_id: int) -> None:
@@ -231,6 +235,41 @@ class RoomManager:
         if next_state.status != "in_progress":
             self._reveal_deadlines.pop(table_id, None)
         self.publish_session(table_id)
+
+    def _pending_leave_seats(self, table_id: int) -> tuple[int, ...]:
+        state = self._session_states.get(table_id)
+        if state is None or not state.pending_leaves:
+            return ()
+        by_user = {seat.user_id: seat.seat_id for seat in state.seats if seat.user_id is not None}
+        return tuple(sorted(by_user[user_id] for user_id in state.pending_leaves if user_id in by_user))
+
+    def _fold_pending_leavers(self, table_id: int, actor: RoomActor) -> bool:
+        """Fold the seats of players who have already left, the moment it is their turn.
+
+        Queueing the leave alone left the seat owing an action, so everyone else
+        sat through a thirty second timeout with no explanation for a player who
+        had visibly gone.
+        """
+        folded = False
+        while actor.state.street != "complete":
+            seat_id = actor.state.current_seat
+            if seat_id is None or seat_id not in self._pending_leave_seats(table_id):
+                break
+            before = actor.state
+            result = actor.submit(
+                {
+                    "expected_revision": actor.revision,
+                    "idempotency_key": f"leave:{seat_id}:{actor.revision}",
+                    "action": {"type": "fold"},
+                },
+                seat_id=seat_id,
+            )
+            if not isinstance(result, Ack):
+                logger.warning("table %s seat %s: could not fold a departed player", table_id, seat_id)
+                break
+            folded = True
+            self._after_transition(table_id, actor, before)
+        return folded
 
     def _after_transition(self, table_id: int, actor: RoomActor, before) -> None:
         if before.street != "complete" and actor.state.street == "complete":
@@ -524,6 +563,7 @@ class RoomManager:
                 "status": table.status,
                 "host_user_id": table.host_user_id,
                 "seats": seat_events,
+                "pending_leaves": list(self._pending_leave_seats(table_id)),
                 "final_rankings": rankings,
             }
 
