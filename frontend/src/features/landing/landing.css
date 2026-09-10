@@ -1,0 +1,122 @@
+.landing {
+  min-height: 100vh;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 56px;
+}
+
+.landing-copy { max-width: 30rem; }
+
+.landing h1 {
+  font-size: clamp(2.75rem, 6.5vw, 4.25rem);
+  font-variation-settings: 'opsz' 120;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.landing-lede {
+  font-size: 19px;
+  color: var(--mist);
+  margin-bottom: 28px;
+  max-width: 26rem;
+}
+
+.landing .btn-primary { font-size: 17px; padding: 14px 24px; }
+
+.landing-alert { margin-bottom: 16px; }
+
+/* Three plain facts, marked with the suits rather than generic bullets. */
+.landing-facts {
+  list-style: none;
+  margin: 32px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--mist);
+}
+.landing-facts li { display: grid; grid-template-columns: 20px 1fr; gap: 12px; align-items: baseline; }
+.landing-facts span {
+  color: var(--brass);
+  font-size: 15px;
+  font-variant-emoji: text;
+  font-family: var(--font-sans);
+}
+.landing-facts .suit-red { color: var(--ember); }
+
+/* ---- The table, seen from the near edge -------------------------------- */
+.hero-table {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 380px;
+}
+
+.hero-felt {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 5 / 4;
+  border-radius: 50% 50% 44% 44%;
+  background:
+    var(--felt-grain),
+    radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-deep) 78%);
+  background-blend-mode: soft-light, normal;
+  box-shadow:
+    0 0 0 14px var(--walnut),
+    0 0 0 16px var(--walnut-light),
+    0 30px 60px rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+}
+
+.hero-plaque {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  line-height: 1.9;
+  color: rgba(243, 236, 218, 0.34);
+}
+
+.hero-fan { display: flex; justify-content: center; align-items: flex-end; margin-top: 12%; }
+
+.hero-card {
+  display: block;
+  margin-inline: -14px;
+  transform-origin: 50% 90%;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.5));
+  animation: deal-in 520ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.hero-card .card { width: clamp(64px, 8.5vw, 92px); }
+
+.hero-card:nth-child(1) { transform: rotate(-15deg) translateY(16px); animation-delay: 0ms; }
+.hero-card:nth-child(2) { transform: rotate(-7.5deg) translateY(4px); animation-delay: 90ms; }
+.hero-card:nth-child(3) { transform: rotate(0deg) translateY(-2px); animation-delay: 180ms; }
+.hero-card:nth-child(4) { transform: rotate(7.5deg) translateY(4px); animation-delay: 270ms; }
+.hero-card:nth-child(5) { transform: rotate(15deg) translateY(16px); animation-delay: 360ms; }
+
+@keyframes deal-in {
+  from { opacity: 0; transform: translate(56px, -44px) rotate(-24deg) scale(0.92); }
+}
+
+@media (max-width: 899px) {
+  .landing {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    padding: 36px 20px 56px;
+    align-content: center;
+  }
+  .landing-copy { max-width: none; order: 2; }
+  .hero-table { order: 1; min-height: 0; }
+  .hero-felt { max-width: 340px; }
+  .landing-facts { margin-top: 26px; }
+}

@@ -1,0 +1,150 @@
+/* ---- Buttons ------------------------------------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 12px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--ivory);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 120ms ease;
+}
+.btn:hover:not(:disabled) { background: #24402F; border-color: var(--line-strong); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.btn[aria-busy='true'] { cursor: progress; opacity: 0.72; }
+
+.btn-primary {
+  background: var(--copper);
+  border-color: var(--copper-lift);
+  color: #1B1005;
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) { background: var(--copper-lift); border-color: #D89A5A; }
+
+.btn-danger { background: transparent; border-color: rgba(196, 85, 61, 0.45); color: var(--ember-text); }
+.btn-danger:hover:not(:disabled) { background: rgba(196, 85, 61, 0.14); border-color: rgba(196, 85, 61, 0.7); }
+
+/* ---- Fields ------------------------------------------------------------- */
+.field { display: grid; gap: 6px; }
+.field label { font-size: 13px; font-weight: 500; color: var(--mist); }
+.field small { font-size: 12px; color: var(--mist-dim); }
+.field input,
+.field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.field input::placeholder { color: rgba(185, 198, 189, 0.5); }
+.field input:hover,
+.field select:hover { border-color: var(--line-strong); }
+.field input:focus,
+.field select:focus { border-color: var(--copper); outline: none; }
+.field select {
+  appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23B9C6BD' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+/* A room code is read aloud and typed in by hand, so give it room to breathe. */
+.code-input {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-align: center;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--brass);
+}
+
+/* ---- Panels ------------------------------------------------------------- */
+.panel {
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+.panel h2 { font-size: 24px; margin-bottom: 4px; }
+
+/* ---- Status ------------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-sunk);
+  font-size: 13px;
+  color: var(--mist);
+  white-space: nowrap;
+}
+.pill::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--mist); }
+.pill-open::before { background: var(--moss); box-shadow: 0 0 0 3px rgba(79, 163, 122, 0.22); }
+.pill-connecting::before,
+.pill-reconnecting::before { background: var(--brass); animation: pill-pulse 1.3s ease-in-out infinite; }
+.pill-closed::before,
+.pill-unauthorized::before,
+.pill-forbidden::before,
+.pill-handshake_failed::before { background: var(--ember); }
+@keyframes pill-pulse { 50% { opacity: 0.3; } }
+
+[role='alert'] {
+  margin: 0;
+  color: var(--ember-text);
+  font-size: 14px;
+}
+
+.code {
+  padding: 4px 10px;
+  border: 1px solid rgba(201, 162, 74, 0.4);
+  border-radius: 8px;
+  background: rgba(201, 162, 74, 0.08);
+  color: var(--brass);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A restart cancelled a hand: say so before anything else happens. */
+.recovery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 900px;
+  margin: 0 auto 24px;
+  padding: 16px 20px;
+  border: 1px solid rgba(201, 162, 74, 0.38);
+  border-left: 3px solid var(--brass);
+  border-radius: 14px;
+  background: rgba(201, 162, 74, 0.11);
+}
+.recovery p { margin: 0; font-size: 15px; }
+
+/* Waiting states: keep the room, lose the furniture. */
+.boot {
+  min-height: 60vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.boot h1 { font-size: 30px; font-variation-settings: 'opsz' 90; }
+.boot p { margin: 0; color: var(--mist); }

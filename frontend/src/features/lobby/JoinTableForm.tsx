@@ -16,13 +16,18 @@ export function JoinTableForm() {
     catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Could not join the table.'); setBusy(false); }
   };
   return (
-    <form onSubmit={submit} aria-label="Join table">
-      <h2 id="join-heading">Join with a room code</h2>
+    <form className="panel panel-join" onSubmit={submit} aria-label="Join table">
+      <div>
+        <h2 id="join-heading">Join with a room code</h2>
+        <p className="muted">Someone already opened a table.</p>
+      </div>
+      <div className="join-stub">
       <Field id="code" label="Room code" hint="Ask the host for the code.">
-        <input id="code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" spellCheck={false} inputMode="text" className="code-input" required />
+        <input id="code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" spellCheck={false} inputMode="text" className="code-input" placeholder="ABCD-1234" required />
       </Field>
+      </div>
       {error && <p role="alert">{error}</p>}
-      <Button type="submit" variant="primary" busy={busy}>Join with code</Button>
+      <Button type="submit" busy={busy}>Join with code</Button>
     </form>
   );
 }

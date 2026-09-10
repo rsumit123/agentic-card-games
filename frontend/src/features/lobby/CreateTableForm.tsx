@@ -24,11 +24,16 @@ export function CreateTableForm() {
     }
   };
   return (
-    <form onSubmit={submit} aria-labelledby="create-heading">
-      <h2 id="create-heading">Create a private table</h2>
+    <form className="panel panel-create" onSubmit={submit} aria-labelledby="create-heading">
+      <div>
+        <h2 id="create-heading">Create a private table</h2>
+        <p className="muted">Pick the shape of the game. Settings lock when play starts.</p>
+      </div>
+      <div className="create-settings">
       <Field id="seats" label="Seats"><select id="seats" value={seats} onChange={(event) => setSeats(Number(event.target.value) as 2 | 3 | 4)}>{[2, 3, 4].map((number) => <option key={number} value={number}>{number}</option>)}</select></Field>
       <Field id="chips" label="Starting chips"><select id="chips" value={chips} onChange={(event) => setChips(Number(event.target.value) as 1000 | 5000 | 10000)}>{[1000, 5000, 10000].map((number) => <option key={number} value={number}>{number.toLocaleString()}</option>)}</select></Field>
       <Field id="blinds" label="Blinds"><select id="blinds" value={smallBlind} onChange={(event) => setSmallBlind(Number(event.target.value) as 5 | 10 | 25)}>{[5, 10, 25].map((number) => <option key={number} value={number}>{number} / {number * 2}</option>)}</select></Field>
+      </div>
       {error && <p role="alert">{error}</p>}
       <Button type="submit" variant="primary" busy={busy}>Create table</Button>
     </form>

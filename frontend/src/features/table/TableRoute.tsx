@@ -20,8 +20,8 @@ export function TableRoute() {
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => { if (session) refresh(); }, [session, refresh]);
   useEffect(() => { if (view?.status !== 'lobby') return; const timer = setInterval(refresh, 2000); return () => clearInterval(timer); }, [view?.status, refresh]);
-  if (error) return <main><p role="alert">{error}</p></main>;
-  if (!view) return <main aria-busy="true"><p>Loading table…</p></main>;
+  if (error) return <main className="boot"><p role="alert">{error}</p></main>;
+  if (!view) return <main className="boot" aria-busy="true"><p>Loading table…</p></main>;
   if (view.status === 'ended' || view.status === 'cancelled') return <SessionEnded status={view.status} rankings={view.final_rankings} />;
   if (view.status === 'lobby') return <SetupPage view={view} refresh={refresh} onStarted={refresh} />;
   return <TablePage view={view} onLeft={() => navigate('/')} />;

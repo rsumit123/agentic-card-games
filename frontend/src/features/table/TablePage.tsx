@@ -50,7 +50,7 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
   return <main className="table-page">
     <header className="table-header">
       <h1>The Common Table</h1>
-      <p>Private table · {view.seat_count} seats · blinds {view.small_blind}/{view.big_blind}</p>
+      <p>A private table for {view.seat_count}. Blinds {view.small_blind}/{view.big_blind}.</p>
       <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
       <ConnectionPill status={connection} />
       <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection ? projection.public.street !== 'complete' : true} onLeft={onLeft} />

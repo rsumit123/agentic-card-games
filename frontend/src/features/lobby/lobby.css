@@ -1,0 +1,91 @@
+.lobby {
+  max-width: 980px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.lobby-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-bottom: 20px;
+  margin-bottom: 36px;
+  border-bottom: 1px solid var(--line);
+}
+.lobby-header h1 { font-size: 30px; font-variation-settings: 'opsz' 90; }
+.lobby-header p { margin: 0; font-size: 14px; color: var(--mist); }
+.lobby-who { display: flex; align-items: center; gap: 16px; }
+.btn-link {
+  padding: 0;
+  min-height: 0;
+  border: 0;
+  background: none;
+  color: var(--mist);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.btn-link:hover { color: var(--ivory); }
+
+.lobby-forms {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  align-items: start;
+  gap: 24px;
+}
+.lobby-forms form { display: grid; gap: 18px; }
+.lobby-forms h2 { font-size: 24px; }
+.lobby-forms .btn { width: 100%; }
+
+/* Creating a table is the room being built: felt under a wooden edge. */
+.panel-create {
+  position: relative;
+  overflow: hidden;
+  background:
+    var(--felt-grain),
+    linear-gradient(170deg, rgba(31, 91, 59, 0.5), rgba(22, 63, 43, 0.28));
+  background-blend-mode: soft-light, normal;
+  border-color: rgba(201, 162, 74, 0.22);
+}
+.panel-create::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: linear-gradient(90deg, var(--walnut), var(--walnut-light), var(--walnut));
+}
+.create-settings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+/* Joining is a stub of paper with a code written on it. */
+.panel-join { background: var(--surface); }
+.panel-join .btn {
+  border-color: rgba(201, 162, 74, 0.45);
+  color: var(--brass);
+  background: rgba(201, 162, 74, 0.06);
+  font-weight: 600;
+}
+.panel-join .btn:hover:not(:disabled) {
+  background: rgba(201, 162, 74, 0.13);
+  border-color: rgba(201, 162, 74, 0.72);
+}
+.join-stub {
+  padding: 18px;
+  border: 1px dashed rgba(201, 162, 74, 0.4);
+  border-radius: 12px;
+  background: rgba(201, 162, 74, 0.05);
+}
+
+.lobby-note { margin: 14px 0 0; font-size: 13px; color: var(--mist-dim); }
+
+@media (max-width: 820px) {
+  .lobby { padding: 28px 20px 56px; }
+  .lobby-forms { grid-template-columns: 1fr; }
+  .create-settings { grid-template-columns: 1fr 1fr; }
+}

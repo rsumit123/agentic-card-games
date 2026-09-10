@@ -1,9 +1,41 @@
 :root {
-  --forest: #12211A; --felt: #1F5B3B; --felt-deep: #163F2B;
-  --walnut: #5A3A22; --walnut-light: #8A5B36;
-  --ivory: #F3ECDA; --ink: #0F1A14; --copper: #B8763A; --brass: #C9A24A;
-  --mist: #B9C6BD; --ember: #C4553D; --moss: #4FA37A;
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --radius-control: 10px; --radius-card: 6px;
+  /* Room */
+  --forest: #12211A;
+  --felt: #1F5B3B;
+  --felt-deep: #163F2B;
+  --walnut: #5A3A22;
+  --walnut-light: #8A5B36;
+
+  /* Surfaces lifted off the room */
+  --surface: #172A20;
+  --surface-2: #1D3327;
+  --surface-sunk: rgba(9, 18, 13, 0.55);
+  --line: rgba(243, 236, 218, 0.12);
+  --line-strong: rgba(243, 236, 218, 0.22);
+
+  /* Ink */
+  --ivory: #F3ECDA;
+  --ink: #0F1A14;
+  --mist: #B9C6BD;
+  --mist-dim: rgba(185, 198, 189, 0.72);
+
+  /* Accents, used sparingly */
+  --copper: #B8763A;
+  --copper-lift: #C9853F;
+  --brass: #C9A24A;
+  --ember: #C4553D;
+  --ember-text: #E5947C;
+  --moss: #4FA37A;
+
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+
+  --radius-control: 10px;
+  --radius-card: 6px;
+  --radius-panel: 16px;
+
+  --shadow-panel: 0 18px 40px rgba(0, 0, 0, 0.38);
+  --shadow-lift: 0 12px 28px rgba(0, 0, 0, 0.45);
+
+  --felt-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.42'/%3E%3C/svg%3E");
 }

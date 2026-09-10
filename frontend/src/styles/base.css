@@ -1,8 +1,62 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; background: var(--forest); color: var(--ivory); font-family: var(--font-sans); font-size: 16px; line-height: 1.4; }
-h1, h2 { font-family: var(--font-display); font-weight: 600; line-height: 1.2; margin: 0; }
-button, input, select { font: inherit; }
-:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--forest);
+  color: var(--ivory);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The room's light: a brass lamp high on the right, the floor falling away below. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 560px at 84% -8%, rgba(201, 162, 74, 0.15), transparent 62%),
+    radial-gradient(760px 520px at 8% 106%, rgba(22, 63, 43, 0.5), transparent 62%);
+}
+
+#root { position: relative; z-index: 1; }
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+}
+
+p { margin: 0 0 12px; }
+a { color: var(--brass); }
+
+button, input, select { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .tabular { font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.muted { color: var(--mist); }
+
+/* A hairline the colour of the room's brass, used to close a title. */
+.rule {
+  width: 64px;
+  height: 1px;
+  border: 0;
+  margin: 18px 0;
+  background: linear-gradient(90deg, var(--brass), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

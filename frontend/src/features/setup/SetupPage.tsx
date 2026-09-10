@@ -5,6 +5,7 @@ import { ApiError } from '../../api/http';
 import { useSession } from '../../store/session';
 import { Button } from '../../components/Button';
 import { RecoveryNotice } from '../table/RecoveryNotice';
+import './setup.css';
 import { SeatGrid } from './SeatGrid';
 
 export function SetupPage({ view, refresh, onStarted, notice }: { view: TableView; refresh: () => void; onStarted: () => void; notice?: string | null }) {
@@ -31,7 +32,7 @@ export function SetupPage({ view, refresh, onStarted, notice }: { view: TableVie
     <main className="setup">
       <header className="setup-header">
         <h1>The Common Table</h1>
-        <p>Private table · {view.seat_count} seats · blinds {view.small_blind}/{view.big_blind} · {view.starting_chips.toLocaleString()} chips</p>
+        <p>A private table for {view.seat_count}. Blinds {view.small_blind}/{view.big_blind}. Everyone starts with {view.starting_chips.toLocaleString()} chips.</p>
         {code ? <p>Room code <strong className="code">{code}</strong></p> : <p className="muted">Ask the host for the code.</p>}
       </header>
       {notice && <RecoveryNotice message={notice} />}

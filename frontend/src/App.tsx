@@ -14,7 +14,7 @@ export default function App() {
     me().then((response) => setAuthenticated(response.user, response.csrf_token))
       .catch((error: ApiError) => (error.code === 'unauthenticated' ? setAnonymous() : setError()));
   }, [setAuthenticated, setAnonymous, setError]);
-  if (status === 'loading') return <main aria-busy="true"><h1>The Common Table</h1><p>Checking your session…</p></main>;
+  if (status === 'loading') return <main className="boot" aria-busy="true"><h1>The Common Table</h1><p>Checking your session…</p></main>;
   if (status === 'error') return <LandingPage error="Could not reach the table server. Try again in a moment." />;
   if (status === 'anonymous') return <LandingPage error={params.get('error') ?? undefined} />;
   return (
