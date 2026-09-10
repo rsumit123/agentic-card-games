@@ -61,3 +61,14 @@ def test_alembic_upgrade_runs_on_fresh_database(tmp_path):
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_requirements_declare_google_auth_requests_transport():
+    """app/auth.py imports google.auth.transport.requests to verify ID tokens.
+
+    That module needs the `requests` package, which google-auth only installs
+    through its `requests` extra. Declaring bare google-auth builds a container
+    where the OAuth callback raises at runtime.
+    """
+    requirements = (ROOT / "requirements.txt").read_text()
+    assert "google-auth[requests]" in requirements

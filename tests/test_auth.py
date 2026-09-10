@@ -193,3 +193,30 @@ def test_production_session_cookie_is_cross_origin_secure(monkeypatch, tmp_path)
     cookie = response.headers["set-cookie"].lower()
     assert "samesite=none" in cookie
     assert "secure" in cookie
+
+
+def test_google_token_verifier_delegates_to_google_library(monkeypatch):
+    """Exercise the real verifier path, which every other auth test replaces.
+
+    Fails in any environment where google.auth.transport.requests cannot be
+    imported, which is exactly how production broke.
+    """
+    from google.oauth2 import id_token
+
+    from app.auth import _google_token_verifier
+
+    seen = {}
+
+    def fake_verify(token, request, **kwargs):
+        seen["token"] = token
+        seen["request"] = request
+        return {"sub": "subject-123", "iss": "https://accounts.google.com"}
+
+    monkeypatch.setattr(id_token, "verify_oauth2_token", fake_verify)
+
+    assert _google_token_verifier("raw-token") == {
+        "sub": "subject-123",
+        "iss": "https://accounts.google.com",
+    }
+    assert seen["token"] == "raw-token"
+    assert seen["request"] is not None
