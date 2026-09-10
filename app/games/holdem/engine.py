@@ -291,29 +291,54 @@ def apply_action(state: HoldemState, seat_id: int, action: HoldemAction | Mappin
     return replace(state, current_seat=next_seat)
 
 
+def pot_layers(state: HoldemState) -> tuple[dict[str, object], ...]:
+    """The pot split into its main and side layers, main pot first.
+
+    Every seat's chips sit in the layers it could reach: a short all-in caps the
+    main pot, and the rest forms side pots only the deeper seats can win. The
+    payout code and the projection both read this, so what a player is shown and
+    what actually gets paid can never drift apart.
+    """
+    contributions = sorted({player.total_contribution for player in state.players if player.total_contribution > 0})
+    layers: list[dict[str, object]] = []
+    previous = 0
+    for level in contributions:
+        contributors = [player for player in state.players if player.total_contribution >= level]
+        amount = (level - previous) * len(contributors)
+        previous = level
+        if amount <= 0:
+            continue
+        layers.append(
+            {
+                "amount": amount,
+                "eligible_seats": tuple(sorted(player.seat_id for player in contributors if not player.folded)),
+            }
+        )
+    return tuple(layers)
+
+
 def resolve_showdown(state: HoldemState) -> HoldemState:
     if state.street == "complete":
         return state
     active = _active_players(state)
     if len(active) == 1:
         return _finish_fold(state)
-    contributions = sorted({player.total_contribution for player in state.players if player.total_contribution > 0})
     payouts = {player.seat_id: 0 for player in state.players}
-    previous = 0
     winners: list[int] = []
-    for level in contributions:
-        contributors = [player for player in state.players if player.total_contribution >= level]
-        layer_amount = (level - previous) * len(contributors)
-        eligible = [player for player in contributors if not player.folded]
-        if eligible:
-            ranks = {player.seat_id: evaluate_hand(player.hole_cards + state.community_cards) for player in eligible}
+    for layer in pot_layers(state):
+        layer_amount = layer["amount"]
+        eligible_seats = layer["eligible_seats"]
+        if eligible_seats:
+            ranks = {
+                seat_id: evaluate_hand(state.player(seat_id).hole_cards + state.community_cards)
+                for seat_id in eligible_seats
+            }
             best = max(ranks.values())
             layer_winners = sorted(seat_id for seat_id, rank in ranks.items() if rank == best)
             share, remainder = divmod(layer_amount, len(layer_winners))
             for index, seat_id in enumerate(layer_winners):
                 payouts[seat_id] += share + (1 if index < remainder else 0)
             winners.extend(layer_winners)
-        previous = level
     updated_players = tuple(replace(player, stack=player.stack + payouts[player.seat_id]) for player in state.players)
     winner_tuple = tuple(dict.fromkeys(sorted(winners)))
     return replace(
@@ -394,6 +419,7 @@ def public_projection(state: HoldemState) -> dict[str, object]:
         "street": state.street,
         "community_cards": state.community_cards,
         "pot": state.pot,
+        "pots": pot_layers(state),
         "current_seat": state.current_seat,
         "dealer_seat": state.dealer_seat,
         "small_blind_seat": state.small_blind_seat,

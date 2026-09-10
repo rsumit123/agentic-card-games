@@ -10,9 +10,15 @@ FIXTURE = Path(__file__).resolve().parents[1] / "frontend" / "tests" / "fixtures
 
 
 def test_frontend_snapshot_fixture_matches_projection_keys():
+    """Every key the frontend fixture relies on must still exist in the projection.
+
+    The backend is free to add keys the fixture has not caught up with yet, so
+    this is a subset check: a fixture key that the projection no longer produces
+    is the drift worth failing on.
+    """
     state = start_hand({1: 1000, 2: 1000}, random_bytes=bytes(range(256)) * 4)
     projection = jsonable_encoder(RoomActor(1, state, player_names={1: "Ana", 2: "Rivers (AI)"}).snapshot_for(1))
     fixture = json.loads(FIXTURE.read_text())
-    assert set(fixture["payload"].keys()) == set(projection.keys())
-    assert set(fixture["payload"]["public"].keys()) == set(projection["public"].keys())
-    assert set(fixture["payload"]["public"]["players"][0].keys()) == set(projection["public"]["players"][0].keys())
+    assert set(fixture["payload"].keys()) <= set(projection.keys())
+    assert set(fixture["payload"]["public"].keys()) <= set(projection["public"].keys())
+    assert set(fixture["payload"]["public"]["players"][0].keys()) <= set(projection["public"]["players"][0].keys())

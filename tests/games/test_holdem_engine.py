@@ -9,6 +9,8 @@ from app.games.holdem.engine import (
     InvalidAction,
     apply_action,
     legal_actions,
+    pot_layers,
+    public_projection,
     resolve_showdown,
     start_hand,
 )
@@ -151,3 +153,87 @@ def test_showdown_reveals_contenders_but_not_a_walkover():
     assert {entry["seat_id"] for entry in revealed} == {1, 2}
     assert all(entry["hole_cards"] for entry in revealed)
     assert all(isinstance(entry["category"], str) for entry in revealed)
+
+
+def _layered_state(contributions, *, folded=()):
+    """A river state whose seats have the given total contributions."""
+    board = (
+        Card(2, "clubs"),
+        Card(3, "diamonds"),
+        Card(4, "hearts"),
+        Card(5, "spades"),
+        Card(9, "clubs"),
+    )
+    holes = {
+        1: (Card(14, "clubs"), Card(14, "diamonds")),
+        2: (Card(13, "clubs"), Card(13, "diamonds")),
+        3: (Card(6, "clubs"), Card(7, "diamonds")),
+    }
+    return HoldemState(
+        players=tuple(
+            PlayerState(
+                seat_id,
+                0,
+                holes[seat_id],
+                folded=seat_id in folded,
+                total_contribution=amount,
+            )
+            for seat_id, amount in sorted(contributions.items())
+        ),
+        deck=(),
+        deck_index=0,
+        community_cards=board,
+        street="river",
+        dealer_seat=1,
+        small_blind_seat=2,
+        big_blind_seat=3,
+        current_seat=None,
+        current_bet=0,
+        min_raise=10,
+        small_blind=5,
+        big_blind=10,
+    )
+
+
+def test_public_projection_reports_a_single_pot_when_everyone_matched():
+    state = start_hand({0: 1000, 1: 1000}, random_bytes=RANDOM_BYTES)
+    state = apply_action(state, state.current_seat, {"type": "call"})
+
+    projection = public_projection(state)
+
+    assert len(projection["pots"]) == 1
+    assert projection["pots"][0]["amount"] == state.pot
+    assert projection["pots"][0]["eligible_seats"] == (0, 1)
+
+
+def test_public_projection_splits_a_main_pot_and_a_side_pot():
+    state = _layered_state({1: 700, 2: 380, 3: 700})
+
+    projection = public_projection(state)
+
+    assert projection["pots"] == (
+        {"amount": 1140, "eligible_seats": (1, 2, 3)},
+        {"amount": 640, "eligible_seats": (1, 3)},
+    )
+    assert sum(layer["amount"] for layer in projection["pots"]) == state.pot
+
+
+def test_pot_layers_exclude_folded_seats_but_keep_their_chips():
+    state = _layered_state({1: 700, 2: 380, 3: 700}, folded=(3,))
+
+    layers = pot_layers(state)
+
+    assert layers[0]["eligible_seats"] == (1, 2)
+    assert layers[1]["eligible_seats"] == (1,)
+    assert sum(layer["amount"] for layer in layers) == state.pot
+
+
+def test_resolve_showdown_pays_out_exactly_the_published_pot_layers():
+    state = _layered_state({1: 700, 2: 380, 3: 700})
+
+    layers = pot_layers(state)
+    resolved = resolve_showdown(state)
+
+    assert sum(amount for _, amount in resolved.payouts) == sum(layer["amount"] for layer in layers)
+    assert sum(amount for _, amount in resolved.payouts) == state.pot
+    assert set(resolved.winners) <= {seat for layer in layers for seat in layer["eligible_seats"]}
