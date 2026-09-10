@@ -120,8 +120,8 @@ def test_host_can_fill_empty_seat_with_ai_and_start(app_and_store):
 
     assert view.seats[1].actor_type == "ai"
     assert view.seats[1].ai_tier == "Hard"
-    assert view.seats[1].display_name == "GPT-4o"  # players see the model, not the tier
-    assert view.seats[1].model == "openai/gpt-4o"
+    assert view.seats[1].display_name == "Gemini 3.7 Flash"  # players see the model, not the tier
+    assert view.seats[1].model == "google/gemini-3.7-flash"
     assert view.seats[1].spectating is False
     assert started.status == "in_progress"
 
@@ -276,5 +276,5 @@ def test_ai_tier_catalogue_names_the_model_behind_each_tier(app_and_store):
     assert response.status_code == 200
     tiers = response.json()["tiers"]
     assert [item["tier"] for item in tiers] == ["Easy", "Medium", "Hard"]
-    assert {item["label"] for item in tiers} == {"GPT-4o mini", "GPT-4o"}
-    assert all(item["model"].startswith("openai/") for item in tiers)
+    assert {item["label"] for item in tiers} == {"GPT-4o mini", "Gemini 3.7 Flash"}
+    assert {item["model"] for item in tiers} == {"openai/gpt-4o-mini", "google/gemini-3.7-flash"}

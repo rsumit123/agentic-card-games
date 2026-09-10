@@ -75,6 +75,31 @@ class Hand(Base):
     table: Mapped[Table] = relationship(back_populates="hands")
 
 
+class HandOutcome(Base):
+    """One row per seat per finished hand, so a player's record can be read back.
+
+    Hands were already persisted with a snapshot, but the winners live inside
+    that JSON keyed by seat, and seats change hands over a session. Recording
+    the outcome per seat at the moment it settles keeps the attribution honest
+    and makes "how do I do against Hard" a single query.
+    """
+
+    __tablename__ = "hand_outcomes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hand_id: Mapped[int] = mapped_column(ForeignKey("hands.id"), index=True)
+    table_id: Mapped[int] = mapped_column(ForeignKey("tables.id"), index=True)
+    seat_number: Mapped[int] = mapped_column(Integer)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    actor_type: Mapped[str] = mapped_column(String(16), default="human")
+    ai_tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    opponent_tiers: Mapped[list] = mapped_column(JSON, default=list)
+    net_chips: Mapped[int] = mapped_column(Integer, default=0)
+    won: Mapped[bool] = mapped_column(Boolean, default=False)
+    went_to_showdown: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class RoomEvent(Base):
     __tablename__ = "room_events"
 

@@ -6,6 +6,7 @@ import { useSession } from './store/session';
 import { LandingPage } from './features/landing/LandingPage';
 import { LobbyPage } from './features/lobby/LobbyPage';
 import { TableRoute } from './features/table/TableRoute';
+import { HistoryPage } from './features/history/HistoryPage';
 
 export default function App() {
   const { status, setAuthenticated, setAnonymous, setError } = useSession();
@@ -21,6 +22,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LobbyPage />} />
       <Route path="/tables/:id" element={<TableRoute />} />
+      <Route path="/history" element={<HistoryPage />} />
     </Routes>
   );
 }

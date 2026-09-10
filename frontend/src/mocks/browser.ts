@@ -17,6 +17,20 @@ let mockTable: TableView = {
 };
 
 const mockHandlers = [
+  http.get('http://localhost:8000/me/history', () => HttpResponse.json({
+    hands: { played: 46, won: 21, win_rate: 45.7, net_chips: -320, showdowns: 14 },
+    sessions: { played: 4, won: 1, win_rate: 25 },
+    opponents: [
+      { opponent: 'Easy', hands: 18, won: 11, win_rate: 61.1, net_chips: 740 },
+      { opponent: 'Medium', hands: 16, won: 7, win_rate: 43.8, net_chips: -180 },
+      { opponent: 'Hard', hands: 12, won: 3, win_rate: 25, net_chips: -880 },
+    ],
+    recent: [
+      { table_id: 3, won: false, net_chips: -150, opponents: ['Hard'], showdown: true, at: null },
+      { table_id: 3, won: true, net_chips: 220, opponents: ['Hard'], showdown: false, at: null },
+      { table_id: 2, won: true, net_chips: 75, opponents: ['Easy'], showdown: false, at: null },
+    ],
+  })),
   http.get('http://localhost:8000/ai/tiers', () => HttpResponse.json({
     tiers: [
       { tier: 'Easy', model: 'openai/gpt-4o-mini', label: 'GPT-4o mini' },

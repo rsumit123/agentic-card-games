@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { logout } from '../../api/auth';
 import { useSession } from '../../store/session';
 import { CreateTableForm } from './CreateTableForm';
@@ -27,6 +28,7 @@ export function LobbyPage() {
         <h1>The Common Table</h1>
         <div className="lobby-who">
           <p>Signed in as {user?.display_name}</p>
+          <Link to="/history">Your record</Link>
           <button type="button" className="btn-link" onClick={signOut} disabled={signingOut}>
             Sign out
           </button>

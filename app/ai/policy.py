@@ -66,12 +66,12 @@ _POLICIES = {
     ),
     "Hard": TierPolicy(
         "Hard",
-        ("openai/gpt-4o",),
+        ("google/gemini-3.7-flash",),
         "holdem-hard-v2",
         "action-v2",
         0.25,
         900,
-        12000,
+        20000,
         ("openai/gpt-4o-mini",),
         guidance=(
             "a strong, thoughtful player. You size bets to the pot, read the story your "
@@ -95,6 +95,7 @@ TIERS = ("Easy", "Medium", "Hard")
 MODEL_LABELS = {
     "openai/gpt-4o-mini": "GPT-4o mini",
     "openai/gpt-4o": "GPT-4o",
+    "google/gemini-3.7-flash": "Gemini 3.7 Flash",
 }
 
 

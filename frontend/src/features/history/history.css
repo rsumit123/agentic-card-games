@@ -1,0 +1,80 @@
+.history { max-width: 860px; margin: 0 auto; padding: 40px 24px 64px; }
+
+.history-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-bottom: 20px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.history-header h1 { font-size: 30px; font-variation-settings: 'opsz' 90; }
+
+/* Two headline numbers, then the detail underneath. */
+.history-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.history-total {
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+.history-total dt { font-size: 13px; color: var(--mist); margin: 0 0 6px; }
+.history-total dd { margin: 0; font-family: var(--font-display); font-size: 40px; line-height: 1; }
+.history-total small { display: block; margin-top: 8px; font-size: 13px; color: var(--mist-dim); }
+
+.history h2 { font-size: 22px; margin: 36px 0 14px; }
+
+.record { width: 100%; border-collapse: collapse; }
+.record th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mist-dim);
+  padding: 0 12px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.record th.numeric, .record td.numeric { text-align: right; }
+.record td { padding: 14px 12px 14px 0; border-bottom: 1px solid var(--line); }
+.record tbody tr:last-child td { border-bottom: 0; }
+.record .who { font-size: 16px; }
+.record .who small { display: block; font-size: 12px; color: var(--mist-dim); }
+
+/* The bar carries the magnitude; the number beside it carries the value. */
+.rate { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.rate-track { width: 92px; height: 6px; border-radius: 3px; background: rgba(243, 236, 218, 0.12); overflow: hidden; }
+.rate-bar { display: block; height: 100%; border-radius: 3px; background: var(--brass); }
+.rate-value { min-width: 46px; font-variant-numeric: tabular-nums; }
+
+.history-empty {
+  padding: 40px 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-panel);
+  text-align: center;
+  color: var(--mist);
+}
+
+.recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.recent li {
+  display: grid;
+  grid-template-columns: 74px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 14px;
+}
+.recent .outcome { font-weight: 600; }
+.recent .outcome[data-won='true'] { color: var(--moss); }
+.recent .outcome[data-won='false'] { color: var(--mist); }
+.recent .against { color: var(--mist); }
+.recent .delta { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .history { padding: 28px 18px 56px; }
+  .record .rate-track { width: 60px; }
+  .recent li { grid-template-columns: 64px 1fr auto; font-size: 13px; }
+}

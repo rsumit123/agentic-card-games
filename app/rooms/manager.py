@@ -12,8 +12,8 @@ from sqlalchemy import select
 from ..ai.adapter import AIAdapter
 from ..ai.openrouter import OpenRouterProvider
 from ..ai.policy import model_label_for_tier, policy_for_tier
-from ..games.holdem.engine import public_projection, start_hand
-from ..models import Hand, Seat, Table
+from ..games.holdem.engine import public_projection, showdown_hands, start_hand
+from ..models import Hand, HandOutcome, Seat, Table
 from .actor import RoomActor
 from .lifecycle import SessionSeat, SessionState, end_session, finish_hand, leave_between_hands
 from .protocol import Ack
@@ -255,11 +255,15 @@ class RoomManager:
                 active_hand.status = "completed"
                 active_hand.finished_at = self._now()
                 active_hand.state_snapshot = jsonable_encoder(public_projection(actor.state))
+            seats_by_number = {item.seat_number: item for item in table.seats}
             for player in actor.state.players:
-                seat = next((item for item in table.seats if item.seat_number == player.seat_id), None)
+                seat = seats_by_number.get(player.seat_id)
                 if seat is not None:
                     seat.chip_count = player.stack
                     seat.is_funded = player.stack > 0
+
+            if active_hand is not None:
+                self._record_outcomes(session, table, active_hand, actor, seats_by_number)
             table.current_revision = actor.revision
             table.status = next_session_state.status
             if next_session_state.host_user_id is not None:
@@ -278,6 +282,40 @@ class RoomManager:
         else:
             self._reveal_deadlines.pop(table_id, None)
         self.publish_session(table_id)
+
+    @staticmethod
+    def _record_outcomes(session, table, hand, actor: RoomActor, seats_by_number) -> None:
+        """Write one row per seat, so a player's record can be read back later."""
+        payouts = dict(actor.state.payouts)
+        winners = set(actor.state.winners)
+        showdown = bool(showdown_hands(actor.state))
+
+        def label(seat) -> str:
+            if seat is None:
+                return "human"
+            return (seat.ai_tier or "AI") if seat.actor_type == "ai" else "human"
+
+        for player in actor.state.players:
+            seat = seats_by_number.get(player.seat_id)
+            opponents = [
+                label(seats_by_number.get(other.seat_id))
+                for other in actor.state.players
+                if other.seat_id != player.seat_id
+            ]
+            session.add(
+                HandOutcome(
+                    hand_id=hand.id,
+                    table_id=table.id,
+                    seat_number=player.seat_id,
+                    user_id=seat.user_id if seat is not None else None,
+                    actor_type=seat.actor_type if seat is not None else "human",
+                    ai_tier=seat.ai_tier if seat is not None else None,
+                    opponent_tiers=opponents,
+                    net_chips=payouts.get(player.seat_id, 0) - player.total_contribution,
+                    won=player.seat_id in winners,
+                    went_to_showdown=showdown,
+                )
+            )
 
     def _start_next_hand(self, table_id: int, actor: RoomActor) -> None:
         state = self._session_states.get(table_id)
