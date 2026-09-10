@@ -11,6 +11,7 @@ interface TableState {
   deadline: string | null;
   recoveryNotice: string | null;
   revealDeadline: string | null;
+  droppedAction: boolean;
   connection: SocketStatus;
   pending: { key: string; action: Action } | null;
   lastError: { code: ErrorCode; message: string } | null;
@@ -21,6 +22,7 @@ interface TableState {
   setView: (view: TableView) => void;
   setPending: (pending: { key: string; action: Action } | null) => void;
   dismissNotice: () => void;
+  setDroppedAction: (dropped: boolean) => void;
   canAct: () => boolean;
   reset: () => void;
 }
@@ -32,6 +34,7 @@ const initial = {
   deadline: null,
   recoveryNotice: null,
   revealDeadline: null,
+  droppedAction: false,
   connection: 'closed' as SocketStatus,
   pending: null,
   lastError: null,
@@ -56,12 +59,14 @@ export const useTable = create<TableState>((set, get) => ({
     if (event.revision <= get().revision) return;
     set({ projection: event.payload, revision: event.revision, deadline: event.deadline,
       revealDeadline: event.reveal_deadline ?? null, lastError: null,
+      ...(event.type === 'ack' ? { droppedAction: false } : {}),
       ...(event.type === 'ack' ? { pending: null } : {}) });
   },
   setConnection: (connection) => set({ connection }),
   setView: (view) => set({ view }),
   setPending: (pending) => set({ pending }),
   dismissNotice: () => set({ recoveryNotice: null }),
+  setDroppedAction: (droppedAction) => set({ droppedAction }),
   canAct: () => {
     const { projection, pending, connection } = get();
     return !!projection && pending === null && connection === 'open' && projection.public.current_seat === projection.seat_id;

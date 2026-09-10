@@ -65,3 +65,6 @@
 .ai-menu li { display: grid; gap: 2px; }
 .tier-name { font-size: 15px; }
 .tier-model { font-size: 12px; color: var(--mist-dim); }
+
+.invite { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.invite-said { font-size: 13px; color: var(--brass); }

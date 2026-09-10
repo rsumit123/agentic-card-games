@@ -1,15 +1,25 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../../api/auth';
 import { useSession } from '../../store/session';
 import { CreateTableForm } from './CreateTableForm';
 import { JoinTableForm } from './JoinTableForm';
+import { PENDING_INVITE } from './JoinRoute';
 import './lobby.css';
 
 export function LobbyPage() {
   const user = useSession((state) => state.user);
   const setAnonymous = useSession((state) => state.setAnonymous);
   const [signingOut, setSigningOut] = useState(false);
+  const navigate = useNavigate();
+
+  // An invite tapped before signing in lands here afterwards. Carry on to the
+  // table the player was actually asked to join.
+  useEffect(() => {
+    let pending: string | null = null;
+    try { pending = sessionStorage.getItem(PENDING_INVITE); } catch { /* private mode */ }
+    if (pending) navigate('/join', { replace: true });
+  }, [navigate]);
 
   const signOut = async () => {
     setSigningOut(true);

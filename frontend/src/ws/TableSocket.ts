@@ -3,12 +3,16 @@ import type { Command, ServerEvent } from '../domain/protocol';
 import { config } from '../config';
 import { buildCommand, clearPending, loadPending, savePending } from './idempotency';
 
-export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'closed' | 'unauthorized' | 'forbidden' | 'handshake_failed';
+export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'closed' | 'unauthorized' | 'forbidden' | 'handshake_failed' | 'lost';
 interface Options {
   WebSocketImpl?: typeof WebSocket; baseUrl?: string; onEvent: (event: ServerEvent) => void; onStatus: (status: SocketStatus) => void;
   onPendingDropped?: () => void; random?: () => number;
 }
 const MAX_HANDSHAKE_FAILURES = 3;
+/** Retrying forever behind a "Reconnecting…" pill is indistinguishable from a
+ *  table that will never come back. After this many tries we say so and offer
+ *  the player the retry instead. */
+const MAX_RECONNECTS = 6;
 
 export class TableSocket {
   private ws: WebSocket | null = null;
@@ -20,7 +24,8 @@ export class TableSocket {
 
   constructor(private tableId: number, private opts: Options) {}
 
-  connect() { this.stopped = false; this.open(); }
+  connect() { this.stopped = false; this.attempt = 0; this.handshakeFailures = 0; this.open(); }
+  retry() { this.attempt = 0; this.handshakeFailures = 0; this.stopped = false; this.open(); }
   close() {
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
@@ -60,6 +65,7 @@ export class TableSocket {
         this.opts.onStatus('handshake_failed');
         return;
       }
+      if (this.attempt >= MAX_RECONNECTS) { this.opts.onStatus('lost'); return; }
       this.opts.onStatus('reconnecting');
       this.schedule();
     };

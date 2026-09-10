@@ -445,3 +445,104 @@ def test_session_event_lists_no_pending_leaves_when_nobody_is_leaving(tmp_path):
     manager.ensure_actor_for_table(table_id, sessions, settings)
 
     assert manager.session_event(table_id)["pending_leaves"] == []
+
+
+def _three_seat_table(tmp_path, name):
+    from app.db import build_engine, initialize_database, session_factory
+    from app.settings import Settings
+
+    settings = Settings(database_url=f"sqlite:///{tmp_path}/{name}.db", data_dir=tmp_path)
+    engine = build_engine(settings)
+    initialize_database(engine)
+    sessions = session_factory(engine)
+    with sessions() as session:
+        users = [User(google_subject=f"{name}-{index}", display_name=f"Player {index}") for index in range(1, 4)]
+        session.add_all(users)
+        session.flush()
+        table = Table(
+            host_user_id=users[0].id,
+            room_code_hash=name,
+            seat_count=3,
+            starting_chips=1000,
+            small_blind=5,
+            big_blind=10,
+            status="in_progress",
+            seats=[
+                Seat(seat_number=index + 1, user_id=user.id, chip_count=1000, is_funded=True)
+                for index, user in enumerate(users)
+            ],
+        )
+        session.add(table)
+        session.commit()
+        return settings, sessions, table.id
+
+
+def _finish_hand_by_folding(manager, actor, table_id, key):
+    """Fold round the table until the hand settles."""
+    index = 0
+    while actor.state.street != "complete" and actor.state.current_seat is not None:
+        seat = actor.state.current_seat
+        manager.submit(
+            table_id,
+            seat,
+            {"expected_revision": actor.revision, "idempotency_key": f"{key}-{index}", "action": {"type": "fold"}},
+        )
+        index += 1
+
+
+def test_sitting_out_deals_you_out_of_the_next_hand_and_keeps_your_chips(tmp_path):
+    settings, sessions, table_id = _three_seat_table(tmp_path, "sit-out")
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    current = [now]
+    manager = RoomManager(clock=lambda: current[0], hand_reveal_seconds=6, session_factory=sessions)
+    actor = manager.ensure_actor_for_table(table_id, sessions, settings)
+
+    manager.sit_out(table_id, user_id=2)
+
+    assert {seat["seat_number"]: seat["sitting_out"] for seat in manager.session_event(table_id)["seats"]} == {
+        1: False,
+        2: True,
+        3: False,
+    }
+    assert 2 in {player.seat_id for player in actor.state.players}, "sitting out never takes effect mid-hand"
+
+    _finish_hand_by_folding(manager, actor, table_id, "sit-out")
+    current[0] = now + timedelta(seconds=7)
+    asyncio.run(manager.run_once(table_id))
+
+    assert actor.state.hand_number == 2
+    assert {player.seat_id for player in actor.state.players} == {1, 3}
+    with sessions() as session:
+        seat = session.query(Seat).filter(Seat.table_id == table_id, Seat.seat_number == 2).one()
+    assert seat.chip_count > 0, "a sat-out seat keeps its chips"
+    assert seat.user_id is not None, "a sat-out seat is not vacated"
+
+    manager.sit_in(table_id, user_id=2)
+    _finish_hand_by_folding(manager, actor, table_id, "sit-in")
+    current[0] = now + timedelta(seconds=20)
+    asyncio.run(manager.run_once(table_id))
+
+    assert actor.state.hand_number == 3
+    assert {player.seat_id for player in actor.state.players} == {1, 2, 3}
+
+
+def test_sitting_out_heads_up_pauses_the_table_instead_of_dealing(tmp_path):
+    settings, sessions, table_id = _in_progress_table(tmp_path, "sit-out-pause")
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    current = [now]
+    manager = RoomManager(clock=lambda: current[0], hand_reveal_seconds=6, session_factory=sessions)
+    actor = manager.ensure_actor_for_table(table_id, sessions, settings)
+
+    manager.sit_out(table_id, user_id=2)
+    _finish_hand_by_folding(manager, actor, table_id, "pause")
+    current[0] = now + timedelta(seconds=7)
+    asyncio.run(manager.run_once(table_id))
+
+    assert actor.state.hand_number == 1, "the table waits rather than dealing to one player"
+    assert actor.state.street == "complete"
+    assert manager.reveal_deadline(table_id) is None
+    assert manager.session_event(table_id)["status"] == "in_progress"
+
+    manager.sit_in(table_id, user_id=2)
+
+    assert actor.state.hand_number == 2, "sitting back in resumes the table"

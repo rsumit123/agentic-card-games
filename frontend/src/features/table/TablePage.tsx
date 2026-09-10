@@ -51,7 +51,7 @@ function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () 
 
 export function TablePage({ view, onLeft = () => window.location.assign('/') }: { view: TableView; onLeft?: () => void }) {
   const { send, reconnect } = useTableSocket(view.id);
-  const { projection, deadline, revealDeadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, canAct, session } = useTable();
+  const { projection, deadline, revealDeadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, droppedAction, setDroppedAction, canAct, session } = useTable();
   const myUserId = useSession((state) => state.user?.id ?? null);
   const hostId = session?.host_user_id ?? view.host_user_id;
   const hostSeat = view.seats.find((seat) => seat.user_id === hostId)?.seat_number ?? null;
@@ -84,9 +84,24 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
       <SoundToggle />
       <ConnectionPill status={connection} />
     </header>
-    {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
+
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
-    {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : !recoveryNotice && <>
+    {connection === 'unauthorized' && <div role="alert" className="recovery">
+      <p>You were signed out.</p><a className="btn btn-primary" href={loginUrl()}>Sign in again</a>
+    </div>}
+    {connection === 'forbidden' && <div role="alert" className="recovery">
+      <p>You are not seated at this table.</p><a className="btn btn-primary" href="/">Back to lobby</a>
+    </div>}
+    {connection === 'lost' && <div role="alert" className="recovery">
+      <p>Lost the table. It may have gone away, or your connection did.</p>
+      <button type="button" className="btn btn-primary" onClick={reconnect}>Try again</button>
+    </div>}
+    {droppedAction && <div role="alert" className="recovery recovery-inline">
+      <p>Your last move did not reach the table. Have another go.</p>
+      <button type="button" className="btn" onClick={() => setDroppedAction(false)}>OK</button>
+    </div>}
+    {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : <>
+      {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
       <Felt projection={projection} deadline={deadline} seatCount={view.seat_count} thinkingSeats={thinkingSeats} />
       <HandResult pub={projection.public} mySeat={projection.seat_id} />
       <NextHand deadline={revealDeadline} />

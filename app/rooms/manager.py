@@ -15,7 +15,14 @@ from ..ai.policy import model_label_for_tier, policy_for_tier
 from ..games.holdem.engine import public_projection, showdown_hands, start_hand
 from ..models import Hand, HandOutcome, Seat, Table
 from .actor import RoomActor
-from .lifecycle import SessionSeat, SessionState, end_session, finish_hand, leave_between_hands
+from .lifecycle import (
+    LifecycleError,
+    SessionSeat,
+    SessionState,
+    end_session,
+    finish_hand,
+    leave_between_hands,
+)
 from .protocol import Ack
 
 logger = logging.getLogger(__name__)
@@ -88,7 +95,7 @@ class RoomManager:
             if table is None:
                 raise ValueError("table does not exist")
             seats = session.scalars(select(Seat).where(Seat.table_id == table_id)).all()
-            stacks = {
+            funded = {
                 seat.seat_number: seat.chip_count
                 for seat in seats
                 if seat.seat_number <= table.seat_count
@@ -96,6 +103,13 @@ class RoomManager:
                 and seat.chip_count > 0
                 and (seat.user_id is not None or seat.actor_type == "ai")
             }
+            sitting_out = {seat.seat_number for seat in seats if seat.sitting_out}
+            stacks = {seat_id: chips for seat_id, chips in funded.items() if seat_id not in sitting_out}
+            if len(stacks) < 2 <= len(funded):
+                # A restart cannot leave the table stuck with nobody to deal to,
+                # so a table that was paused on sit-outs comes back dealing.
+                logger.warning("table %s: too few seats are sitting in after a restart, dealing everyone in", table_id)
+                stacks = funded
             state = start_hand(stacks, small_blind=table.small_blind, big_blind=table.big_blind)
             names = {seat.seat_number: self._display_name(seat) for seat in seats}
             session_state = self._session_state(table, seats, hand_in_progress=True)
@@ -220,6 +234,53 @@ class RoomManager:
         if actor is not None and self._fold_pending_leavers(table_id, actor):
             self._publish_state(table_id, actor)
         self.publish_session(table_id)
+
+    def sit_out(self, table_id: int, user_id: int) -> None:
+        """Deal this player out from the next hand, keeping their seat and chips."""
+        self._set_sitting_out(table_id, user_id, True)
+
+    def sit_in(self, table_id: int, user_id: int) -> None:
+        """Deal this player back in, and resume a table that was waiting on them."""
+        state = self._set_sitting_out(table_id, user_id, False)
+        actor = self._actors.get(table_id)
+        paused = (
+            actor is not None
+            and state.status == "in_progress"
+            and not state.hand_in_progress
+            and actor.state.street == "complete"
+            and self.reveal_deadline(table_id) is None
+        )
+        if paused:
+            self._start_next_hand(table_id, actor)
+
+    def _set_sitting_out(self, table_id: int, user_id: int, sitting_out: bool) -> SessionState:
+        actor = self._actors.get(table_id)
+        state = self._session_states.get(table_id) or self._load_session_state(
+            table_id, actor is not None and actor.state.street != "complete"
+        )
+        seat = next((item for item in state.seats if item.user_id == user_id), None)
+        if seat is None:
+            raise LifecycleError("you are not seated at this table")
+        next_state = replace(
+            state,
+            seats=tuple(
+                replace(item, sitting_out=sitting_out) if item.seat_id == seat.seat_id else item
+                for item in state.seats
+            ),
+        )
+        self._session_states[table_id] = next_state
+        # Written on its own rather than through _persist_session_state: mid-hand
+        # the chip counts in the session state are the ones from before the hand.
+        if self._session_factory is not None:
+            with self._session_factory() as session:
+                row = session.scalar(
+                    select(Seat).where(Seat.table_id == table_id, Seat.seat_number == seat.seat_id)
+                )
+                if row is not None:
+                    row.sitting_out = sitting_out
+                    session.commit()
+        self.publish_session(table_id)
+        return next_state
 
     def end(self, table_id: int, user_id: int) -> None:
         actor = self._actors.get(table_id)
@@ -361,8 +422,13 @@ class RoomManager:
         if state is None or state.status != "in_progress":
             self._reveal_deadlines.pop(table_id, None)
             return
-        stacks = {seat.seat_id: seat.chips for seat in state.seats if seat.present and seat.chips > 0}
-        if len(stacks) < 2:
+        funded = {seat.seat_id: seat.chips for seat in state.seats if seat.present and seat.chips > 0}
+        stacks = {
+            seat.seat_id: seat.chips
+            for seat in state.seats
+            if seat.present and seat.chips > 0 and not seat.sitting_out
+        }
+        if len(funded) < 2:
             ended = replace(
                 state,
                 status="ended",
@@ -371,6 +437,13 @@ class RoomManager:
             )
             self._session_states[table_id] = ended
             self._persist_session_state(table_id, ended)
+            self._reveal_deadlines.pop(table_id, None)
+            self.publish_session(table_id)
+            return
+        if len(stacks) < 2:
+            # Enough chips are at the table, but not enough players are sitting
+            # in. Wait for one of them rather than dealing a hand to one seat.
+            self._session_states[table_id] = replace(state, hand_in_progress=False)
             self._reveal_deadlines.pop(table_id, None)
             self.publish_session(table_id)
             return
@@ -491,6 +564,7 @@ class RoomManager:
                     joined_order=seat.seat_number,
                     present=seat.present and (seat.user_id is not None or seat.actor_type == "ai"),
                     display_name=RoomManager._display_name(seat),
+                    sitting_out=bool(seat.sitting_out),
                 )
                 for seat in sorted(seats, key=lambda item: item.seat_number)
                 if seat.seat_number <= table.seat_count
@@ -527,6 +601,7 @@ class RoomManager:
                     seat.chip_count = seat_state.chips
                     seat.is_funded = seat_state.chips > 0
                     seat.present = seat_state.present
+                    seat.sitting_out = seat_state.sitting_out
             session.commit()
 
     def _session_event(self, table_id: int, revision: int) -> dict[str, object]:
@@ -542,6 +617,7 @@ class RoomManager:
                     "chip_count": seat.chip_count,
                     "ai_tier": seat.ai_tier if seat.actor_type == "ai" else None,
                     "spectating": (seat.user_id is None and seat.actor_type != "ai") or not seat.present or seat.chip_count <= 0,
+                    "sitting_out": bool(seat.sitting_out),
                 }
                 for seat in seats
                 if seat.seat_number <= table.seat_count

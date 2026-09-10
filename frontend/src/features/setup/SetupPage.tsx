@@ -5,6 +5,7 @@ import { listAiTiers } from '../../api/ai';
 import { ApiError } from '../../api/http';
 import { useSession } from '../../store/session';
 import { Button } from '../../components/Button';
+import { InviteButton } from './InviteButton';
 import { RecoveryNotice } from '../table/RecoveryNotice';
 import './setup.css';
 import { SeatGrid } from './SeatGrid';
@@ -36,7 +37,7 @@ export function SetupPage({ view, refresh, onStarted, notice }: { view: TableVie
       <header className="setup-header">
         <h1>The Common Table</h1>
         <p>A private table for {view.seat_count}. Blinds {view.small_blind}/{view.big_blind}. Everyone starts with {view.starting_chips.toLocaleString()} chips.</p>
-        {code ? <p>Room code <strong className="code">{code}</strong></p> : <p className="muted">Ask the host for the code.</p>}
+        {code ? <><p>Room code <strong className="code">{code}</strong></p><InviteButton code={code} /></> : <p className="muted">Ask the host for the code.</p>}
       </header>
       {notice && <RecoveryNotice message={notice} />}
       <SeatGrid seats={view.seats} isHost={isHost} busySeat={busySeat} tiers={tiers} onAddAi={addAi} />

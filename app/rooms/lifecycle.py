@@ -16,6 +16,7 @@ class SessionSeat:
     joined_order: int
     present: bool = True
     display_name: str | None = None
+    sitting_out: bool = False
 
     @property
     def spectating(self) -> bool:

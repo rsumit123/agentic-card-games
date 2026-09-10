@@ -7,10 +7,17 @@ import { LandingPage } from './features/landing/LandingPage';
 import { LobbyPage } from './features/lobby/LobbyPage';
 import { TableRoute } from './features/table/TableRoute';
 import { HistoryPage } from './features/history/HistoryPage';
+import { JoinRoute, PENDING_INVITE } from './features/lobby/JoinRoute';
 
 export default function App() {
   const { status, setAuthenticated, setAnonymous, setError } = useSession();
   const [params] = useSearchParams();
+  // Signing in bounces through Google, so an invite code in the URL has to be
+  // kept somewhere that survives the round trip.
+  useEffect(() => {
+    const invite = /^\/join\/([^/]+)/.exec(window.location.pathname)?.[1];
+    if (invite) { try { sessionStorage.setItem(PENDING_INVITE, decodeURIComponent(invite)); } catch { /* private mode */ } }
+  }, []);
   useEffect(() => {
     me().then((response) => setAuthenticated(response.user, response.csrf_token))
       .catch((error: ApiError) => (error.code === 'unauthenticated' ? setAnonymous() : setError()));
@@ -23,6 +30,8 @@ export default function App() {
       <Route path="/" element={<LobbyPage />} />
       <Route path="/tables/:id" element={<TableRoute />} />
       <Route path="/history" element={<HistoryPage />} />
+      <Route path="/join/:code" element={<JoinRoute />} />
+      <Route path="/join" element={<JoinRoute />} />
     </Routes>
   );
 }

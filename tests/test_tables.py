@@ -278,3 +278,36 @@ def test_ai_tier_catalogue_names_the_model_behind_each_tier(app_and_store):
     assert [item["tier"] for item in tiers] == ["Easy", "Medium", "Hard"]
     assert {item["label"] for item in tiers} == {"GPT-4o mini", "Gemini 3.7 Flash"}
     assert {item["model"] for item in tiers} == {"openai/gpt-4o-mini", "google/gemini-3.7-flash"}
+
+
+def test_sit_out_and_sit_in_routes_mark_the_seat(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+    store.join_table(2, created.room_code)
+    store.start_table(1, created.id)
+    app.state.room_manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+
+    from fastapi.testclient import TestClient
+
+    def cookie_for(user_id: int) -> str:
+        return TimestampSigner("development-only-change-me").sign(
+            base64.b64encode(json.dumps({"user_id": user_id, "csrf_token": "csrf"}).encode()).decode()
+        ).decode()
+
+    with TestClient(app) as client:
+        client.cookies.set("session", cookie_for(2))
+        sat_out = client.post(f"/tables/{created.id}/sit-out", headers={"X-CSRF-Token": "csrf"})
+        with app.state.session_factory() as session:
+            seat = session.query(Seat).filter(Seat.table_id == created.id, Seat.seat_number == 2).one()
+            assert seat.sitting_out is True
+        sat_in = client.post(f"/tables/{created.id}/sit-in", headers={"X-CSRF-Token": "csrf"})
+
+        client.cookies.set("session", cookie_for(3))
+        stranger = client.post(f"/tables/{created.id}/sit-out", headers={"X-CSRF-Token": "csrf"})
+
+    assert sat_out.status_code == 200
+    assert sat_in.status_code == 200
+    with app.state.session_factory() as session:
+        seat = session.query(Seat).filter(Seat.table_id == created.id, Seat.seat_number == 2).one()
+    assert seat.sitting_out is False
+    assert stranger.status_code == 409

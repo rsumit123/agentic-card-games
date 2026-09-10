@@ -282,6 +282,9 @@
 }
 
 .next-hand { margin: 8px 0 0; text-align: center; font-size: 14px; color: var(--brass); }
+
+/* A recovery message is a banner over the table, not a replacement for it. */
+.recovery-inline { max-width: 780px; margin: 10px auto 0; }
 .leave-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .leave-end .btn { min-height: 38px; padding: 8px 16px; font-size: 14px; }
 .leave-end [role='group'] {

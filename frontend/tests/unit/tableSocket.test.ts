@@ -33,7 +33,19 @@ describe('TableSocket', () => {
     vi.advanceTimersByTime(1); expect(FakeWebSocket.instances).toHaveLength(2);
     FakeWebSocket.last().drop(); vi.advanceTimersByTime(1000); expect(FakeWebSocket.instances).toHaveLength(3);
     for (let i = 0; i < 10; i++) { FakeWebSocket.last().drop(); vi.advanceTimersByTime(10_000); }
-    expect(FakeWebSocket.instances.length).toBeGreaterThan(10);
+    // Retrying forever behind a "Reconnecting…" pill looks the same as a table
+    // that is never coming back, so it gives up and says so.
+    expect(status.at(-1)).toBe('lost');
+    expect(FakeWebSocket.instances.length).toBeLessThan(10);
+  });
+
+  it('starts over when the player asks to retry', () => {
+    const { sock, status } = make(); sock.connect(); FakeWebSocket.last().open();
+    for (let i = 0; i < 8; i++) { FakeWebSocket.last().drop(); vi.advanceTimersByTime(10_000); }
+    expect(status.at(-1)).toBe('lost');
+    const before = FakeWebSocket.instances.length;
+    sock.retry();
+    expect(FakeWebSocket.instances.length).toBe(before + 1);
   });
 
   it('stops on 4401 and 4403', () => {

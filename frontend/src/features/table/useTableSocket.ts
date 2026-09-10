@@ -7,7 +7,7 @@ export function useTableSocket(tableId: number) {
   const ref = useRef<TableSocket | null>(null);
   const { applyEvent, setConnection, needsResync } = useTable();
   useEffect(() => {
-    const socket = new TableSocket(tableId, { onEvent: applyEvent, onStatus: setConnection, onPendingDropped: () => useTable.getState().setPending(null) });
+    const socket = new TableSocket(tableId, { onEvent: applyEvent, onStatus: setConnection, onPendingDropped: () => { useTable.getState().setPending(null); useTable.getState().setDroppedAction(true); } });
     ref.current = socket;
     socket.connect();
     return () => { socket.close(); ref.current = null; useTable.getState().reset(); };
@@ -17,8 +17,9 @@ export function useTableSocket(tableId: number) {
     const { projection, revision } = useTable.getState();
     if (!projection || !ref.current) return;
     const key = `pending:${revision}`;
+    useTable.getState().setDroppedAction(false);
     useTable.getState().setPending({ key, action });
     ref.current.send(action, revision, projection.seat_id);
   };
-  return { send, reconnect: () => ref.current?.connect() };
+  return { send, reconnect: () => ref.current?.retry() };
 }
