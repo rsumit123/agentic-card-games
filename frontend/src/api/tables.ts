@@ -8,3 +8,5 @@ export const getTable = (id: number) => request<TableView>(`/tables/${id}`);
 export const startTable = (id: number) => request<{ table: TableView; revision: number }>(`/tables/${id}/start`, { method: 'POST' });
 export const fillAiSeat = (id: number, seat: number, tier: AiTier) =>
   request<TableView>(`/tables/${id}/seats/${seat}/ai`, { method: 'POST', body: { tier } });
+export const leaveTable = (id: number) => request<TableView>(`/tables/${id}/leave`, { method: 'POST' });
+export const endTable = (id: number) => request<TableView>(`/tables/${id}/end`, { method: 'POST' });
