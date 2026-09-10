@@ -112,6 +112,7 @@ def test_websocket_sends_member_snapshot_and_ack(monkeypatch, tmp_path):
             snapshot = websocket.receive_json()
             assert snapshot["type"] == "snapshot"
             assert snapshot["payload"]["hole_cards"]
+            assert websocket.receive_json()["type"] == "session"
             websocket.send_json(
                 {"expected_revision": 0, "idempotency_key": "human-1", "action": {"type": "call"}}
             )
@@ -136,8 +137,10 @@ def test_websocket_fans_out_state_without_leaking_hole_cards(monkeypatch, tmp_pa
         second_client.cookies.set("session", _session_cookie(2))
         with first_client.websocket_connect(f"/ws/tables/{created.id}", headers={"origin": "http://localhost:8000"}) as first_socket:
             first_snapshot = first_socket.receive_json()
+            assert first_socket.receive_json()["type"] == "session"
             with second_client.websocket_connect(f"/ws/tables/{created.id}", headers={"origin": "http://localhost:8000"}) as second_socket:
                 second_snapshot = second_socket.receive_json()
+                assert second_socket.receive_json()["type"] == "session"
                 first_cards = first_snapshot["payload"]["hole_cards"]
                 second_cards = second_snapshot["payload"]["hole_cards"]
                 first_socket.send_json(
@@ -224,3 +227,27 @@ def test_websocket_snapshot_carries_the_reveal_deadline_slot(monkeypatch, tmp_pa
             snapshot = websocket.receive_json()
 
     assert snapshot["reveal_deadline"] is None, "no hand is complete, so nothing is being revealed"
+
+
+def test_websocket_sends_the_session_alongside_the_opening_snapshot(monkeypatch, tmp_path):
+    """A fresh connection must not have to wait for someone to leave to learn who is here."""
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/ws-session.db")
+    app = __import__("app.main", fromlist=["create_app"]).create_app()
+    with app.state.session_factory() as session:
+        session.add_all([User(google_subject="one", display_name="Ana"), User(google_subject="two", display_name="Bo")])
+        session.commit()
+    created = app.state.room_store.create_table(1, TableConfig(seat_count=2))
+    app.state.room_store.join_table(2, created.room_code)
+    app.state.room_store.start_table(1, created.id)
+    app.state.room_manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+
+    with TestClient(app) as client:
+        client.cookies.set("session", _session_cookie(1))
+        with client.websocket_connect(f"/ws/tables/{created.id}", headers={"origin": "http://localhost:8000"}) as websocket:
+            assert websocket.receive_json()["type"] == "snapshot"
+            session_event = websocket.receive_json()
+
+    assert session_event["type"] == "session"
+    assert session_event["status"] == "in_progress"
+    assert [seat["seat_number"] for seat in session_event["seats"]] == [1, 2]
+    assert [seat["chip_count"] for seat in session_event["seats"]] == [1000, 1000]

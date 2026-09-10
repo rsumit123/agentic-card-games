@@ -377,11 +377,21 @@ class RoomManager:
             },
         )
 
-    def publish_session(self, table_id: int) -> None:
+    def session_event(self, table_id: int) -> dict[str, object] | None:
+        """The session event a client would receive, or None if there is nothing to describe.
+
+        A connection that arrives mid-session has otherwise never seen one:
+        publish_session only fires on a leave, an end, or a finished hand.
+        """
         actor = self._actors.get(table_id)
         if actor is None or self._session_factory is None:
+            return None
+        return self._session_event(table_id, actor.revision)
+
+    def publish_session(self, table_id: int) -> None:
+        event = self.session_event(table_id)
+        if event is None:
             return
-        event = self._session_event(table_id, actor.revision)
         self.publish(table_id, lambda _seat_id: event)
 
     async def run_forever(self, stop_event: asyncio.Event) -> None:

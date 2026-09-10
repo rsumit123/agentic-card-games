@@ -47,6 +47,9 @@ async def table_socket(websocket: WebSocket, table_id: int):
             }
         )
     )
+    session_event = manager.session_event(table_id)
+    if session_event is not None:
+        await websocket.send_json(jsonable_encoder(session_event))
     receive_task = asyncio.create_task(websocket.receive_json())
     queue_task = asyncio.create_task(queue.get())
     try:
