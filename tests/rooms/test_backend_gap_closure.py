@@ -301,3 +301,45 @@ def test_leave_during_hand_is_applied_at_hand_boundary(tmp_path):
     assert seats[0].present is False
     assert seats[1].present is True
     assert actor.state.street == "complete"
+
+
+def test_provider_failure_does_not_stop_the_table_driver():
+    """One bad AI call must not take the timers down for every table."""
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(1, state, action_timeout=timedelta(seconds=30))
+
+    class ExplodingAdapter:
+        async def decide(self, projection, schema, revision, deadline):
+            raise RuntimeError("provider is down")
+
+    manager = RoomManager()
+    manager.register(1, actor)
+    manager.register_ai(1, actor.state.current_seat, ExplodingAdapter())
+
+    asyncio.run(manager.run_once(1))
+
+    assert actor.revision == 0
+
+
+def test_ai_is_asked_a_bounded_number_of_times_per_revision():
+    """A failing provider must not be hammered every poll interval."""
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(1, state, action_timeout=timedelta(seconds=30))
+
+    class SilentAdapter:
+        def __init__(self):
+            self.calls = 0
+
+        async def decide(self, projection, schema, revision, deadline):
+            self.calls += 1
+            return None
+
+    adapter = SilentAdapter()
+    manager = RoomManager()
+    manager.register(1, actor)
+    manager.register_ai(1, actor.state.current_seat, adapter)
+
+    for _ in range(12):
+        asyncio.run(manager.run_once(1))
+
+    assert adapter.calls <= 3

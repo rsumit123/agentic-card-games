@@ -50,3 +50,19 @@ def policy_for_tier(tier: str) -> TierPolicy:
         return _POLICIES[tier]
     except KeyError as exc:
         raise ValueError(f"unknown AI tier: {tier}") from exc
+
+
+# Shown to players, so they know which model is sitting across the table.
+MODEL_LABELS = {
+    "openai/gpt-4o-mini": "GPT-4o mini",
+    "openai/gpt-4o": "GPT-4o",
+}
+
+
+def model_for_tier(tier: str) -> str:
+    return policy_for_tier(tier).model_pool[0]
+
+
+def model_label_for_tier(tier: str) -> str:
+    model = model_for_tier(tier)
+    return MODEL_LABELS.get(model, model)

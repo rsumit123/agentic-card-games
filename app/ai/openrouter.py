@@ -14,8 +14,24 @@ class OpenRouterProvider:
         payload = {
             "model": policy.model_pool[0],
             "messages": [
-                {"role": "system", "content": "Return only a JSON action matching the supplied schema."},
-                {"role": "user", "content": json.dumps({"projection": projection, "legal_schema": legal_schema}, default=str)},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are playing no-limit Texas Hold'em. Pick exactly one action from "
+                        "legal_actions. Reply with JSON only, shaped "
+                        '{"type": "<action type>", "amount": <chips>}. '
+                        "Include amount only where the chosen legal action carries one: for bet "
+                        "and raise it is the total you are raising to and must sit between "
+                        "min_amount and max_amount. Add no other fields and no prose."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {"table": projection, "legal_actions": legal_schema.get("actions", legal_schema)},
+                        default=str,
+                    ),
+                },
             ],
             "temperature": policy.temperature,
             "max_tokens": policy.max_tokens,

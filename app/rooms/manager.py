@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Callable
@@ -10,12 +11,14 @@ from sqlalchemy import select
 
 from ..ai.adapter import AIAdapter
 from ..ai.openrouter import OpenRouterProvider
-from ..ai.policy import policy_for_tier
+from ..ai.policy import model_label_for_tier, policy_for_tier
 from ..games.holdem.engine import public_projection, start_hand
 from ..models import Hand, Seat, Table
 from .actor import RoomActor
 from .lifecycle import SessionSeat, SessionState, end_session, finish_hand, leave_between_hands
 from .protocol import Ack
+
+logger = logging.getLogger(__name__)
 
 
 class RoomManager:
@@ -25,18 +28,21 @@ class RoomManager:
         clock=None,
         poll_interval: float = 0.25,
         hand_reveal_seconds: float = 6,
+        max_ai_attempts: int = 3,
         session_factory=None,
     ):
         self._actors: dict[int, RoomActor] = {}
         self._connections: dict[int, dict[int, asyncio.Queue]] = {}
         self._ai_adapters: dict[int, dict[int, object]] = {}
         self._ai_inflight: set[tuple[int, int, int]] = set()
+        self._ai_attempts: dict[tuple[int, int, int], int] = {}
         self._session_states: dict[int, SessionState] = {}
         self._reveal_deadlines: dict[int, datetime] = {}
         self._active_hand_ids: dict[int, int] = {}
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self.poll_interval = poll_interval
         self.hand_reveal_seconds = hand_reveal_seconds
+        self.max_ai_attempts = max_ai_attempts
         self._session_factory = session_factory
 
     def register(self, table_id: int, actor: RoomActor) -> None:
@@ -150,7 +156,18 @@ class RoomManager:
         key = (table_id, seat_id, actor.revision)
         if key in self._ai_inflight:
             return
+        # Ask once per turn, a few times at most. Without this a provider outage
+        # is retried every poll interval until the deadline, which bills the
+        # account for a hundred failed calls and still ends in an auto-fold.
+        self._ai_attempts = {
+            existing: count
+            for existing, count in self._ai_attempts.items()
+            if not (existing[0] == table_id and existing[2] != actor.revision)
+        }
+        if self._ai_attempts.get(key, 0) >= self.max_ai_attempts:
+            return
         self._ai_inflight.add(key)
+        self._ai_attempts[key] = self._ai_attempts.get(key, 0) + 1
         try:
             proposed = await adapter.decide(
                 actor.snapshot_for(seat_id),
@@ -158,7 +175,10 @@ class RoomManager:
                 actor.revision,
                 actor.deadline,
             )
-            if proposed is None or proposed.revision != actor.revision:
+            if proposed is None:
+                logger.warning("table %s seat %s: no usable action from the provider", table_id, seat_id)
+                return
+            if proposed.revision != actor.revision:
                 return
             result = self.submit(
                 table_id,
@@ -170,7 +190,14 @@ class RoomManager:
                 },
             )
             if isinstance(result, Ack):
+                logger.info("table %s seat %s played %s", table_id, seat_id, proposed.action)
+                self._ai_attempts.pop(key, None)
                 self._publish_state(table_id, actor)
+            else:
+                logger.warning("table %s seat %s action rejected: %s", table_id, seat_id, getattr(result, "message", result))
+        except Exception:
+            # A provider fault must never take the timers down for every table.
+            logger.exception("table %s seat %s: AI decision failed", table_id, seat_id)
         finally:
             self._ai_inflight.discard(key)
 
@@ -311,7 +338,10 @@ class RoomManager:
     async def run_forever(self, stop_event: asyncio.Event) -> None:
         while not stop_event.is_set():
             for table_id in tuple(self._actors):
-                await self.run_once(table_id)
+                try:
+                    await self.run_once(table_id)
+                except Exception:
+                    logger.exception("table %s driver step failed", table_id)
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=self.poll_interval)
             except asyncio.TimeoutError:
@@ -375,7 +405,12 @@ class RoomManager:
     def _display_name(seat: Seat) -> str | None:
         if seat.user_id is not None:
             return seat.user.display_name if seat.user is not None else None
-        return f"{seat.ai_tier or 'AI'} player" if seat.actor_type == "ai" else None
+        if seat.actor_type != "ai":
+            return None
+        try:
+            return model_label_for_tier(seat.ai_tier or "")
+        except ValueError:
+            return f"{seat.ai_tier or 'AI'} player"
 
     def _persist_session_state(self, table_id: int, state: SessionState) -> None:
         if self._session_factory is None:
@@ -407,6 +442,7 @@ class RoomManager:
                     "seat_number": seat.seat_number,
                     "display_name": self._display_name(seat),
                     "chip_count": seat.chip_count,
+                    "ai_tier": seat.ai_tier if seat.actor_type == "ai" else None,
                     "spectating": (seat.user_id is None and seat.actor_type != "ai") or not seat.present or seat.chip_count <= 0,
                 }
                 for seat in seats

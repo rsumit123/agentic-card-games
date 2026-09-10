@@ -20,36 +20,55 @@ def _allowed_actions(legal_schema: Mapping[str, Any]) -> list[Mapping[str, Any]]
     return [action for action in actions if isinstance(action, Mapping)]
 
 
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def validate_ai_reply(reply: Any, legal_schema: Mapping[str, Any], revision: int) -> dict[str, Any] | None:
+    """Turn a model reply into a legal action, or None if it cannot be trusted.
+
+    A provider answers with an action; the revision is ours, not the model's, so
+    it is only checked when the reply volunteers one. A reply that names a legal
+    action but omits its amount is completed from that action rather than
+    thrown away, because discarding it costs the seat its whole turn.
+    """
     if not isinstance(reply, Mapping):
         return None
-    if reply.get("revision") != revision:
+    if "revision" in reply and reply.get("revision") != revision:
         return None
     action = reply.get("action", reply)
     if not isinstance(action, Mapping) or not isinstance(action.get("type"), str):
         return None
     action_type = action["type"]
+    amount = action.get("amount")
+    if amount is not None and not _is_int(amount):
+        return None
+
     allowed = _allowed_actions(legal_schema)
     if allowed:
-        matching = [candidate for candidate in allowed if candidate.get("type") == action_type]
-        if not matching:
+        candidate = next((item for item in allowed if item.get("type") == action_type), None)
+        if candidate is None:
             return None
-        candidate = matching[0]
-        if "amount" in candidate and action.get("amount") != candidate["amount"]:
-            return None
-        if "min_amount" in candidate and int(action.get("amount", -1)) < int(candidate["min_amount"]):
-            return None
-        if "max_amount" in candidate and int(action.get("amount", -1)) > int(candidate["max_amount"]):
+        if "amount" in candidate:
+            if amount is None:
+                amount = candidate["amount"]
+            elif amount != candidate["amount"]:
+                return None
+        elif "min_amount" in candidate:
+            if amount is None:
+                amount = candidate["min_amount"]
+            if not _is_int(amount) or amount < int(candidate["min_amount"]) or amount > int(candidate["max_amount"]):
+                return None
+        elif amount is not None:
             return None
     else:
         action_types = legal_schema.get("properties", {}).get("type", {}).get("enum", ())
         if action_types and action_type not in action_types:
             return None
-    clean = {"type": action_type}
-    if "amount" in action:
-        if not isinstance(action["amount"], int) or isinstance(action["amount"], bool):
-            return None
-        clean["amount"] = action["amount"]
+
+    clean: dict[str, Any] = {"type": action_type}
+    if amount is not None:
+        clean["amount"] = amount
     return clean
 
 
@@ -81,7 +100,7 @@ class AIAdapter:
             )
         except (asyncio.TimeoutError, TimeoutError):
             return ProposedAction({"type": "fold"}, revision, "provider_timeout")
-        if isinstance(reply, Mapping) and reply.get("revision") != revision:
+        if isinstance(reply, Mapping) and "revision" in reply and reply.get("revision") != revision:
             return None
         action = validate_ai_reply(reply, legal_schema, revision)
         if action is None:

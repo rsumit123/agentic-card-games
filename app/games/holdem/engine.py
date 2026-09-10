@@ -358,7 +358,9 @@ class HoldemModule:
         return {"type": "fold"}
 
     def ai_schema(self, state: HoldemState, seat_id: int):
-        return {"type": "object", "properties": {"type": {"enum": [item["type"] for item in legal_actions(state, seat_id)]}}}
+        # The adapter validates replies against these entries, so they carry the
+        # amounts and bounds rather than only the action names.
+        return {"actions": [dict(action) for action in legal_actions(state, seat_id)]}
 
 
 def public_projection(state: HoldemState) -> dict[str, object]:

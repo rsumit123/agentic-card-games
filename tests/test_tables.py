@@ -120,7 +120,8 @@ def test_host_can_fill_empty_seat_with_ai_and_start(app_and_store):
 
     assert view.seats[1].actor_type == "ai"
     assert view.seats[1].ai_tier == "Hard"
-    assert view.seats[1].display_name == "Hard player"
+    assert view.seats[1].display_name == "GPT-4o"  # players see the model, not the tier
+    assert view.seats[1].model == "openai/gpt-4o"
     assert view.seats[1].spectating is False
     assert started.status == "in_progress"
 
@@ -232,3 +233,31 @@ def test_start_creates_active_hand_and_actor_projection_has_names(app_and_store)
     assert hands[0].status == "active"
     assert hands[0].pre_hand_balances == {"1": 1000, "2": 1000}
     assert actor.snapshot_for(1)["public"]["names"] == {1: "Host", 2: "Player"}
+
+
+def test_join_prefers_an_open_seat_then_takes_over_an_ai_seat(app_and_store):
+    """A friend arriving with the code should sit down, even at a full-of-AI table."""
+    _app, store = app_and_store
+    view = store.create_table(1, TableConfig(seat_count=3))
+
+    store.fill_ai_seat(1, view.id, 2, "Medium")
+    joined = store.join_table(2, view.room_code)
+    human = next(seat for seat in joined.seats if seat.user_id == 2)
+    assert human.seat_number == 3, "an open seat is taken before an AI seat is evicted"
+
+    taken_over = store.join_table(3, view.room_code)
+    replaced = next(seat for seat in taken_over.seats if seat.user_id == 3)
+    assert replaced.seat_number == 2
+    assert replaced.actor_type == "human"
+    assert replaced.ai_tier is None
+
+
+def test_ai_seats_are_named_after_the_model_that_plays_them(app_and_store):
+    _app, store = app_and_store
+    view = store.create_table(1, TableConfig(seat_count=2))
+    filled = store.fill_ai_seat(1, view.id, 2, "Medium")
+
+    seat = next(item for item in filled.seats if item.seat_number == 2)
+    assert seat.ai_tier == "Medium"
+    assert seat.model == "openai/gpt-4o-mini"
+    assert seat.display_name == "GPT-4o mini"

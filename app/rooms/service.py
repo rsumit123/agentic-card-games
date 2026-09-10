@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
 from ..models import Seat, Table, User
-from ..ai.policy import policy_for_tier
+from ..ai.policy import model_for_tier, model_label_for_tier, policy_for_tier
 
 
 class TableError(Exception):
@@ -78,6 +78,7 @@ class SeatView:
     chip_count: int
     display_name: str | None = None
     spectating: bool = True
+    model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -149,6 +150,7 @@ class RoomStore:
                 seat.chip_count,
                 self._display_name(seat),
                 (seat.user_id is None and seat.actor_type != "ai") or not seat.present or seat.chip_count <= 0,
+                self._model(seat),
             )
             for seat in sorted(table.seats, key=lambda value: value.seat_number)
         )
@@ -173,10 +175,24 @@ class RoomStore:
         )
 
     @staticmethod
+    def _model(seat: Seat) -> str | None:
+        if seat.actor_type != "ai" or not seat.ai_tier:
+            return None
+        try:
+            return model_for_tier(seat.ai_tier)
+        except ValueError:
+            return None
+
+    @staticmethod
     def _display_name(seat: Seat) -> str | None:
-        if seat.user_id is None:
-            return f"{seat.ai_tier or 'AI'} player" if seat.actor_type == "ai" else None
-        return seat.user.display_name if seat.user is not None else None
+        if seat.user_id is not None:
+            return seat.user.display_name if seat.user is not None else None
+        if seat.actor_type != "ai":
+            return None
+        try:
+            return model_label_for_tier(seat.ai_tier or "")
+        except ValueError:
+            return f"{seat.ai_tier or 'AI'} player"
 
     def create_table(
         self,
@@ -246,11 +262,19 @@ class RoomStore:
             occupied = {seat.user_id for seat in table.seats if seat.user_id is not None}
             if user_id in occupied:
                 raise UnauthorizedJoin("user already occupies a seat")
-            empty = next((seat for seat in table.seats if seat.user_id is None), None)
+            # Sit at a genuinely open seat first; only evict a house player when
+            # the table would otherwise be closed to a friend holding the code.
+            empty = next(
+                (seat for seat in table.seats if seat.user_id is None and seat.actor_type != "ai"),
+                None,
+            )
+            if empty is None:
+                empty = next((seat for seat in table.seats if seat.user_id is None), None)
             if empty is None:
                 raise FullTable("table is full")
             empty.user_id = user_id
             empty.actor_type = "human"
+            empty.ai_tier = None
             empty.chip_count = table.starting_chips
             empty.is_funded = True
             empty.present = True
