@@ -94,3 +94,49 @@ def test_voluntary_fold_is_not_marked_as_a_timeout():
     entry = actor.state.action_log[-1]
     assert entry["type"] == "fold"
     assert entry.get("timeout") in (None, False)
+
+
+def test_persistence_failure_is_logged_and_never_shown_to_the_player(caplog):
+    import logging
+
+    from sqlalchemy.exc import OperationalError
+
+    class ExplodingSessions:
+        def __call__(self):
+            raise OperationalError("INSERT INTO room_events", {}, Exception("database is locked"))
+
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(42, state, session_factory_=ExplodingSessions())
+
+    with caplog.at_level(logging.ERROR):
+        result = actor.submit({"expected_revision": 0, "idempotency_key": "boom", "action": {"type": "call"}})
+
+    assert isinstance(result, CommandError)
+    assert result.code == "persistence_failed"
+    assert result.message == "The table could not save that action. It will retry."
+    assert "database is locked" not in result.message
+    assert "database is locked" in caplog.text
+    assert "Traceback" in caplog.text
+    assert actor.revision == 0, "a failed write must not advance the table"
+
+
+def test_unreadable_command_reports_a_written_message():
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(42, state)
+
+    result = actor.submit({"idempotency_key": "no-revision", "action": {"type": "call"}})
+
+    assert isinstance(result, CommandError)
+    assert result.code == "invalid_command"
+    assert result.message == "That command could not be read. Please try the action again."
+
+
+def test_rejected_action_still_explains_itself_in_plain_words():
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(42, state)
+
+    result = actor.submit({"expected_revision": 0, "idempotency_key": "bad", "action": {"type": "check"}})
+
+    assert isinstance(result, CommandError)
+    assert result.code == "invalid_action"
+    assert result.message == "cannot check while facing a bet"

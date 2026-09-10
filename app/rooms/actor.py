@@ -18,6 +18,12 @@ from .protocol import Ack, CommandEnvelope, CommandError, SnapshotEnvelope
 
 logger = logging.getLogger(__name__)
 
+# Written for the player: the alert they see must explain the situation without
+# quoting a driver or a stack frame at them.
+PERSISTENCE_FAILED_MESSAGE = "The table could not save that action. It will retry."
+UNREADABLE_COMMAND_MESSAGE = "That command could not be read. Please try the action again."
+UNAVAILABLE_ACTION_MESSAGE = "That action is not available right now."
+
 
 class RoomActor:
     def __init__(
@@ -131,7 +137,9 @@ class RoomActor:
         try:
             envelope = CommandEnvelope.from_value(command)
         except (KeyError, TypeError, ValueError) as exc:
-            return CommandError("invalid_command", str(exc), self.revision)
+            # A parse failure names Python internals, not anything a player did.
+            logger.warning("table %s: unreadable command", self.table_id, exc_info=exc)
+            return CommandError("invalid_command", UNREADABLE_COMMAND_MESSAGE, self.revision)
         with self._lock:
             if envelope.idempotency_key in self._seen:
                 return self._seen[envelope.idempotency_key]
@@ -139,13 +147,21 @@ class RoomActor:
                 return CommandError("stale_revision", "expected revision does not match", self.revision)
             try:
                 transition = self.module.transition(self.state, self.state.current_seat, envelope.action)
-            except (InvalidAction, ValueError, KeyError) as exc:
+            except (InvalidAction, ValueError) as exc:
+                # These carry written rule explanations ("out of turn"), which
+                # are exactly what the player needs to see.
                 return CommandError("invalid_action", str(exc), self.revision)
+            except KeyError as exc:
+                logger.warning("table %s: action referred to an unknown seat", self.table_id, exc_info=exc)
+                return CommandError("invalid_action", UNAVAILABLE_ACTION_MESSAGE, self.revision)
             next_revision = self.revision + 1
             try:
                 self._persist_transition(next_revision, envelope, timeout=timeout)
-            except Exception as exc:
-                return CommandError("persistence_failed", str(exc), self.revision)
+            except Exception:
+                # A driver error reads as gibberish in a red alert, and its text
+                # can name the schema. Keep the detail in the log.
+                logger.exception("table %s: could not persist revision %s", self.table_id, next_revision)
+                return CommandError("persistence_failed", PERSISTENCE_FAILED_MESSAGE, self.revision)
             self.state = self._mark_timeout(transition.state) if timeout else transition.state
             self.revision = next_revision
             self._deadline = self.now + self.action_timeout if self.state.current_seat is not None else None
