@@ -1,15 +1,38 @@
 import { useState } from 'react';
-import type { AiTier } from '../../domain/table';
+import type { AiTier, AiTierInfo } from '../../domain/table';
 import { Button } from '../../components/Button';
 
-const TIERS: AiTier[] = ['Easy', 'Medium', 'Hard'];
-export function AiSeatMenu({ onPick, busy }: { onPick: (tier: AiTier) => void; busy: boolean }) {
+const FALLBACK: AiTierInfo[] = [
+  { tier: 'Easy', model: '', label: '' },
+  { tier: 'Medium', model: '', label: '' },
+  { tier: 'Hard', model: '', label: '' },
+];
+
+export function AiSeatMenu({ tiers, onPick, busy }: { tiers: AiTierInfo[]; onPick: (tier: AiTier) => void; busy: boolean }) {
   const [open, setOpen] = useState(false);
+  const options = tiers.length > 0 ? tiers : FALLBACK;
+  const choose = (tier: AiTier) => { setOpen(false); onPick(tier); };
   return (
     <div className="ai-menu">
-      <Button onClick={() => setOpen((current) => !current)} aria-haspopup="menu" aria-expanded={open} busy={busy}>Add player</Button>
-      {open && <ul role="menu">{TIERS.map((tier) => <li key={tier} role="menuitem" tabIndex={0} onClick={() => { setOpen(false); onPick(tier); }}
-        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setOpen(false); onPick(tier); } }}>{tier}</li>)}</ul>}
+      <Button onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} busy={busy}>
+        Play with an LLM
+      </Button>
+      {open && (
+        <ul role="menu">
+          {options.map((option) => (
+            <li
+              key={option.tier}
+              role="menuitem"
+              tabIndex={0}
+              onClick={() => choose(option.tier)}
+              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') choose(option.tier); }}
+            >
+              <span className="tier-name">{option.tier}</span>
+              {option.label && <span className="tier-model">{option.label}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

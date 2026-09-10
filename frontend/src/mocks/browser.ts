@@ -11,16 +11,23 @@ let mockTable: TableView = {
   id: 7, room_code: 'ABCD-1234', host_user_id: 1, seat_count: 2 as const, starting_chips: 1000 as const,
   small_blind: 5 as const, big_blind: 10, status: 'lobby' as const, join_expires_at: null,
   seats: [
-    { seat_number: 1, user_id: 1, actor_type: 'human' as const, ai_tier: null, chip_count: 1000, display_name: 'Ana', spectating: false },
-    { seat_number: 2, user_id: null, actor_type: 'human' as const, ai_tier: null, chip_count: 1000, display_name: null, spectating: true },
+    { seat_number: 1, user_id: 1, actor_type: 'human' as const, ai_tier: null, chip_count: 1000, display_name: 'Ana', spectating: false, model: null },
+    { seat_number: 2, user_id: null, actor_type: 'human' as const, ai_tier: null, chip_count: 1000, display_name: null, spectating: true, model: null },
   ], final_rankings: [],
 };
 
 const mockHandlers = [
+  http.get('http://localhost:8000/ai/tiers', () => HttpResponse.json({
+    tiers: [
+      { tier: 'Easy', model: 'openai/gpt-4o-mini', label: 'GPT-4o mini' },
+      { tier: 'Medium', model: 'openai/gpt-4o-mini', label: 'GPT-4o mini' },
+      { tier: 'Hard', model: 'openai/gpt-4o', label: 'GPT-4o' },
+    ],
+  })),
   http.get('http://localhost:8000/tables/:id', () => HttpResponse.json(mockTable)),
   http.post('http://localhost:8000/tables/:id/seats/:seat/ai', async ({ request }) => {
     const { tier } = await request.json() as { tier: 'Easy' | 'Medium' | 'Hard' };
-    mockTable = { ...mockTable, seats: [mockTable.seats[0], { ...mockTable.seats[1], actor_type: 'ai', ai_tier: tier, display_name: `${tier} player`, spectating: false }] };
+    mockTable = { ...mockTable, seats: [mockTable.seats[0], { ...mockTable.seats[1], actor_type: 'ai', ai_tier: tier, display_name: 'GPT-4o mini', model: 'openai/gpt-4o-mini', spectating: false }] };
     return HttpResponse.json(mockTable);
   }),
   http.post('http://localhost:8000/tables/:id/start', () => {

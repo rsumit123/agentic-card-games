@@ -58,7 +58,7 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
     {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
     {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : !recoveryNotice && <>
-      <Felt projection={projection} />
+      <Felt projection={projection} deadline={deadline} />
       <HandResult pub={projection.public} />
       {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}

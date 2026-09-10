@@ -11,6 +11,7 @@ from .db import build_engine, get_session, initialize_database, session_factory
 from .health import router as health_router
 from .models import User
 from .routes.auth import router as auth_router
+from .routes.ai import router as ai_router
 from .routes.tables import router as tables_router
 from .rooms.service import RoomStore
 from .rooms.recovery import recover_incomplete_hands
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(tables_router)
+    app.include_router(ai_router)
     app.include_router(websocket_router)
 
     def configured_session():

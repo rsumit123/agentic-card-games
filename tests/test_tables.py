@@ -261,3 +261,20 @@ def test_ai_seats_are_named_after_the_model_that_plays_them(app_and_store):
     assert seat.ai_tier == "Medium"
     assert seat.model == "openai/gpt-4o-mini"
     assert seat.display_name == "GPT-4o mini"
+
+
+def test_ai_tier_catalogue_names_the_model_behind_each_tier(app_and_store):
+    from fastapi.testclient import TestClient
+
+    app, _store = app_and_store
+    value = base64.b64encode(json.dumps({"user_id": 1, "csrf_token": "csrf"}).encode()).decode()
+    cookie = TimestampSigner("development-only-change-me").sign(value).decode()
+    with TestClient(app) as client:
+        client.cookies.set("session", cookie)
+        response = client.get("/ai/tiers")
+
+    assert response.status_code == 200
+    tiers = response.json()["tiers"]
+    assert [item["tier"] for item in tiers] == ["Easy", "Medium", "Hard"]
+    assert {item["label"] for item in tiers} == {"GPT-4o mini", "GPT-4o"}
+    assert all(item["model"].startswith("openai/") for item in tiers)

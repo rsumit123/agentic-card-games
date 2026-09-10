@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { AiTier, TableView } from '../../domain/table';
+import { useEffect, useState } from 'react';
+import type { AiTier, AiTierInfo, TableView } from '../../domain/table';
 import { fillAiSeat, startTable } from '../../api/tables';
+import { listAiTiers } from '../../api/ai';
 import { ApiError } from '../../api/http';
 import { useSession } from '../../store/session';
 import { Button } from '../../components/Button';
@@ -11,6 +12,8 @@ import { SeatGrid } from './SeatGrid';
 export function SetupPage({ view, refresh, onStarted, notice }: { view: TableView; refresh: () => void; onStarted: () => void; notice?: string | null }) {
   const user = useSession((state) => state.user);
   const isHost = user?.id === view.host_user_id;
+  const [tiers, setTiers] = useState<AiTierInfo[]>([]);
+  useEffect(() => { listAiTiers().then((result) => setTiers(result.tiers)).catch(() => setTiers([])); }, []);
   const [busySeat, setBusySeat] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +39,7 @@ export function SetupPage({ view, refresh, onStarted, notice }: { view: TableVie
         {code ? <p>Room code <strong className="code">{code}</strong></p> : <p className="muted">Ask the host for the code.</p>}
       </header>
       {notice && <RecoveryNotice message={notice} />}
-      <SeatGrid seats={view.seats} isHost={isHost} busySeat={busySeat} onAddAi={addAi} />
+      <SeatGrid seats={view.seats} isHost={isHost} busySeat={busySeat} tiers={tiers} onAddAi={addAi} />
       {error && <p role="alert">{error}</p>}
       {isHost ? <Button variant="primary" onClick={start} disabled={!full} busy={starting}>Start game</Button> : <p className="muted">Waiting for the host to start.</p>}
     </main>

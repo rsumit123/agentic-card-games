@@ -52,6 +52,8 @@ def policy_for_tier(tier: str) -> TierPolicy:
         raise ValueError(f"unknown AI tier: {tier}") from exc
 
 
+TIERS = ("Easy", "Medium", "Hard")
+
 # Shown to players, so they know which model is sitting across the table.
 MODEL_LABELS = {
     "openai/gpt-4o-mini": "GPT-4o mini",

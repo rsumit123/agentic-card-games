@@ -2,7 +2,7 @@ export type TableStatus = 'lobby' | 'in_progress' | 'ended' | 'cancelled';
 export type AiTier = 'Easy' | 'Medium' | 'Hard';
 export interface SeatView {
   seat_number: number; user_id: number | null; actor_type: 'human' | 'ai'; ai_tier: AiTier | null;
-  chip_count: number; display_name: string | null; spectating: boolean;
+  chip_count: number; display_name: string | null; spectating: boolean; model: string | null;
 }
 export interface TableView {
   id: number; room_code: string | null; host_user_id: number; seat_count: 2 | 3 | 4;
@@ -11,3 +11,6 @@ export interface TableView {
   final_rankings: FinalRanking[];
 }
 export interface FinalRanking { seat_number: number; display_name: string | null; chip_count: number }
+
+/** A house player a host can seat, and the model that plays it. */
+export interface AiTierInfo { tier: AiTier; model: string; label: string }

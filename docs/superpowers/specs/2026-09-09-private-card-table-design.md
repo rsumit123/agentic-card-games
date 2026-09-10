@@ -11,7 +11,7 @@ The architecture must support later rule modules such as Uno and Go Fish without
 - A user signs in with Google.
 - A host creates a private table and receives a short, high-entropy room code.
 - Signed-in players with the code join the lobby. The host can fill any remaining seat with an AI player.
-- Each AI seat exposes Easy, Medium, and Hard. The server maps those tiers to vetted OpenRouter model pools and operational limits; model names are not shown to hosts.
+- Each AI seat exposes Easy, Medium, and Hard. The server maps those tiers to vetted OpenRouter model pools and operational limits. The model behind a tier is shown to players, so nobody is guessing what they are playing against; the pools, limits and prompts stay server-side.
 - The host chooses a two-, three-, or four-seat table, starting chips, and blinds from small supported sets with sensible defaults selected. The host can start only after every selected seat is occupied by a human or AI, and settings lock at the start of play.
 - The game uses standard no-limit Texas Hold'em rules. It supports blinds, dealer rotation, all-ins, side pots, split pots, showdowns, and standard hand rankings.
 - Every human and AI action has a server-owned deadline. On disconnection, a player can reconnect until their action deadline. A missing or invalid action at expiry auto-folds, even if checking would be legal.

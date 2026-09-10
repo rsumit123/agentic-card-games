@@ -23,7 +23,10 @@ describe('spectating', () => {
     act(() => { FakeWebSocket.last().open(); FakeWebSocket.last().receive({ ...snap, payload: spectator }); FakeWebSocket.last().receive(session); });
     expect(screen.getByText('Spectating')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /fold|check|call|raise|all-in/i })).toBeNull();
-    expect(screen.queryByRole('timer')).toBeNull();
+    // A spectator has no action clock of their own, but still watches the
+    // active seat's clock run down.
+    expect(screen.queryByRole('timer', { name: /seconds left$/ })).toBeNull();
+    expect(screen.getByRole('timer', { name: /seconds left for this seat$/ })).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Spectators' })).toHaveTextContent('Bo');
   });
 });
