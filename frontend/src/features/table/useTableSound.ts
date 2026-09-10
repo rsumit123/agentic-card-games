@@ -39,7 +39,11 @@ function tone(frequency: number, seconds: number, gain = 0.05, delay = 0) {
 }
 
 function buzz(pattern: number | number[]) {
-  try { navigator.vibrate?.(pattern); } catch { /* not on iOS */ }
+  // Same switch as sound, and the browser refuses it before the first tap
+  // anyway. iOS Safari has no vibrate at all, which is why sound carries the
+  // turn cue rather than haptics.
+  if (!soundEnabled()) return;
+  try { navigator.vibrate?.(pattern); } catch { /* not supported */ }
 }
 
 export function useTableSound({ myTurn, street, handComplete, won }: {

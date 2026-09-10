@@ -9,7 +9,9 @@ body {
   background: var(--forest);
   color: var(--ivory);
   font-family: var(--font-sans);
-  font-size: 16px;
+  /* No font-size here: pinning it to px made the browser's own text-size
+     setting a no-op on iOS. 1rem follows whatever the reader chose. */
+  font-size: 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }

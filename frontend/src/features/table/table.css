@@ -209,7 +209,18 @@
 @keyframes shout { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: none; } }
 
 /* ---- Table chrome ------------------------------------------------------- */
-.table-page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 0; }
+/* The action bar belongs at the bottom of the screen even when the hand is
+   short enough that nothing scrolls. */
+.table-page {
+  max-width: 1100px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 20px 16px 0;
+  display: flex;
+  flex-direction: column;
+}
+.table-page > .action-bar { margin-top: auto; align-self: center; width: 100%; }
+.table-page > .table-footer { flex: none; }
 
 .table-header {
   display: flex;
@@ -280,6 +291,12 @@
   text-transform: uppercase;
   color: var(--mist-dim);
 }
+
+/* The turn clock, in the action bar where the player is already looking. */
+.deadline { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; color: var(--mist); }
+.deadline svg { display: block; }
+.deadline[data-late='true'] { color: var(--ember-text); animation: deadline-urgent 900ms ease-in-out infinite; }
+@keyframes deadline-urgent { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
 .next-hand { margin: 8px 0 0; text-align: center; font-size: 14px; color: var(--brass); }
 

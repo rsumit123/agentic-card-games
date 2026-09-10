@@ -26,7 +26,7 @@ describe('ActionBar', () => {
   });
   it('disables everything while submitting and shows the status text', () => {
     render(<ActionBar legal={legal} canAct={false} onAct={() => {}} status="submitting" />);
-    expect(screen.getByRole('button', { name: 'Fold' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Fold' })).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText(/sending/i)).toBeInTheDocument();
   });
   it('hides Fold when checking is free, so a free hand cannot be thrown away by accident', () => {
@@ -63,6 +63,13 @@ describe('ActionBar', () => {
   it('names who the table is waiting for', () => {
     render(<ActionBar legal={[]} canAct={false} onAct={() => {}} status="waiting" waitingFor="Gemini 3.7 Flash" />);
     expect(screen.getByText(/Waiting for Gemini 3.7 Flash/)).toBeInTheDocument();
+  });
+
+  it('does not offer All-in when calling already puts the last chip in', () => {
+    const shove: LegalAction[] = [{ type: 'fold' }, { type: 'call', amount: 700 }, { type: 'all_in', amount: 700 }];
+    render(<ActionBar legal={shove} canAct onAct={() => {}} status="your-turn" />);
+    expect(screen.getByRole('button', { name: 'Call 700' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /All-in/ })).toBeNull();
   });
 
   it('shows a rejection message', () => {

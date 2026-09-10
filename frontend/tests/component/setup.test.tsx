@@ -30,7 +30,7 @@ describe('setup', () => {
       return HttpResponse.json({ ...base, seats: [base.seats[0], { ...base.seats[1], actor_type: 'ai', ai_tier: 'Medium' }] }); }));
     mount();
     expect(screen.getByText('KLMN-2345')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /start game/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /start game/i })).toHaveAttribute('aria-disabled', 'true');
     await userEvent.click(screen.getByRole('button', { name: /play with an llm/i }));
     await userEvent.click(screen.getByRole('menuitem', { name: /medium/i }));
     expect(tier).toBe('Medium');

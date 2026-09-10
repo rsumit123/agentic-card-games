@@ -15,7 +15,7 @@ describe('LeaveEndControls', () => {
     let ended = false;
     server.use(http.post('http://localhost:8000/tables/7/end', () => { ended = true; return HttpResponse.json({ id: 7, status: 'ended' }); }));
     const { rerender } = render(<LeaveEndControls tableId={7} isHost handInProgress onLeft={() => {}} />);
-    expect(screen.getByRole('button', { name: 'End session' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'End session' })).toHaveAttribute('aria-disabled', 'true');
     rerender(<LeaveEndControls tableId={7} isHost handInProgress={false} onLeft={() => {}} />);
     await userEvent.click(screen.getByRole('button', { name: 'End session' }));
     expect(screen.getByText('The session ends for everyone.')).toBeInTheDocument();

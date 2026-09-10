@@ -38,7 +38,14 @@ export function ActionBar({ legal, canAct, onAct, status, error, deadline, pot, 
   // Folding costs nothing when checking is free, so the only thing the button
   // can do there is lose you the hand by accident.
   const canCheck = legal.some((action) => action.type === 'check');
-  const visible = legal.filter((action) => !(action.type === 'fold' && canCheck));
+  // Calling your last chip and going all in are the same act. Offering both
+  // reads as a choice the player has to think about.
+  const callAmount = legal.find((action) => action.type === 'call')?.amount ?? null;
+  const visible = legal.filter((action) => {
+    if (action.type === 'fold' && canCheck) return false;
+    if (action.type === 'all_in' && callAmount !== null && action.amount === callAmount) return false;
+    return true;
+  });
 
   const heading = status === 'waiting' && waitingFor ? `Waiting for ${waitingFor}` : STATUS_TEXT[status];
 

@@ -1,6 +1,19 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, MouseEvent } from 'react';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'quiet' | 'danger'; busy?: boolean };
-export function Button({ variant = 'quiet', busy, children, disabled, className, ...rest }: Props) {
-  return <button className={`btn btn-${variant}${className ? ` ${className}` : ''}`} disabled={disabled || busy} aria-busy={busy || undefined} {...rest}>{children}</button>;
+
+/**
+ * A disabled button leaves the tab order, so focus falls to the body the
+ * instant you press one and the action bar disables itself. `aria-disabled`
+ * keeps it focusable and announced while still refusing the click.
+ */
+export function Button({ variant = 'quiet', busy, children, disabled, className, onClick, ...rest }: Props) {
+  const off = disabled || busy;
+  return <button
+    className={`btn btn-${variant}${className ? ` ${className}` : ''}`}
+    aria-disabled={off || undefined}
+    aria-busy={busy || undefined}
+    onClick={off ? (event: MouseEvent<HTMLButtonElement>) => event.preventDefault() : onClick}
+    {...rest}
+  >{children}</button>;
 }

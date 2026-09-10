@@ -17,7 +17,11 @@
 }
 .btn:hover:not(:disabled) { background: #24402F; border-color: var(--line-strong); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
-.btn:disabled { opacity: 0.42; cursor: not-allowed; }
+/* aria-disabled rather than the disabled attribute, so the pressed button
+   keeps focus instead of dropping it to the body. It must still not look or
+   behave live. */
+.btn:disabled, .btn[aria-disabled='true'] { opacity: 0.55; cursor: not-allowed; }
+.btn[aria-disabled='true'] { pointer-events: none; }
 .btn[aria-busy='true'] { cursor: progress; opacity: 0.72; }
 
 .btn-primary {
