@@ -7,7 +7,6 @@ import { useTable } from '../../store/table';
 import { useTableSocket } from './useTableSocket';
 import { Felt } from './Felt';
 import { ActionBar, type BarStatus } from './ActionBar';
-import { DeadlineRing } from './DeadlineRing';
 import { ConnectionPill } from './ConnectionPill';
 import { RecoveryNotice } from './RecoveryNotice';
 import { HandResult } from './HandResult';
@@ -53,7 +52,6 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
       <p>A private table for {view.seat_count}. Blinds {view.small_blind}/{view.big_blind}.</p>
       <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
       <ConnectionPill status={connection} />
-      <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection ? projection.public.street !== 'complete' : true} onLeft={onLeft} />
     </header>
     {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
@@ -62,8 +60,12 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
       <HandResult pub={projection.public} />
       {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
-        error={lastError && lastError.code !== 'stale_revision' ? lastError.message : null}
-        deadline={!meSpectating && projection.public.current_seat === projection.seat_id ? <DeadlineRing deadline={deadline} /> : null} />
+        error={lastError && lastError.code !== 'stale_revision' ? lastError.message : null} />
+      {/* Leaving and ending are rare, so they sit past the action bar rather than
+          crowding the header above the table. */}
+      <div className="table-footer">
+        <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection.public.street !== 'complete'} onLeft={onLeft} />
+      </div>
     </>}
   </main>;
 }

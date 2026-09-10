@@ -3,6 +3,7 @@ import { render, screen, act } from '@testing-library/react';
 import snapshot from '../fixtures/snapshot.json';
 import { useTable } from '../../src/store/table';
 import { TablePage } from '../../src/features/table/TablePage';
+import { HandResult } from '../../src/features/table/HandResult';
 import { FakeWebSocket } from '../fakes/FakeWebSocket';
 import type { ServerEvent } from '../../src/domain/protocol';
 import type { TableView } from '../../src/domain/table';
@@ -28,5 +29,37 @@ describe('hand result', () => {
     act(() => { FakeWebSocket.last().receive({ type: 'state', revision: 5, payload: snap.payload, deadline: '2026-09-10T12:00:30+00:00' }); });
     expect(screen.queryByRole('status', { name: 'Hand result' })).toBeNull();
     expect(screen.getAllByRole('img', { name: /of (spades|hearts|clubs|diamonds)/ })).toHaveLength(2);
+  });
+});
+
+describe('why the hand was won', () => {
+  const complete = {
+    ...snap.payload.public,
+    street: 'complete' as const,
+    current_seat: null,
+    winners: [2],
+    payouts: [[2, 300]] as [number, number][],
+  };
+
+  it('names the winning hand and turns both hands face up at a showdown', () => {
+    const pub = {
+      ...complete,
+      showdown: [
+        { seat_id: 1, hole_cards: [{ rank: 11, suit: 'diamonds' as const }, { rank: 11, suit: 'hearts' as const }], category: 'pair' },
+        { seat_id: 2, hole_cards: [{ rank: 14, suit: 'spades' as const }, { rank: 13, suit: 'spades' as const }], category: 'two_pair' },
+      ],
+    };
+    render(<HandResult pub={pub} />);
+
+    expect(screen.getByRole('status', { name: 'Hand result' })).toHaveTextContent('wins 300');
+    expect(screen.getByText('Won with two pair.')).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: /of (spades|hearts|clubs|diamonds)/ })).toHaveLength(4);
+  });
+
+  it('says nothing was shown when everyone folded', () => {
+    render(<HandResult pub={{ ...complete, showdown: [] }} />);
+
+    expect(screen.getByText('Everyone else folded, so no cards were shown.')).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /of spades/ })).toBeNull();
   });
 });

@@ -26,7 +26,8 @@ export function Felt({ projection, deadline = null }: { projection: SeatProjecti
       <div className="pot"><span>Pot</span><Chip amount={pub.pot} /></div>
       <div className="community" aria-label="Community cards">{pub.community_cards.map((card, index) => <PlayingCard key={`${card.rank}${card.suit}${index}`} card={card} size="md" />)}</div>
       {pub.players.map((player) => <SeatBadge key={player.seat_id} player={player} name={pub.names[player.seat_id] ?? null} isMe={player.seat_id === me} active={pub.current_seat === player.seat_id}
-        holeCards={player.seat_id === me ? hole_cards : null} markers={markersBySeat.get(player.seat_id) ?? []} deadline={deadline} style={{ left: `${positions[player.seat_id].x}%`, top: `${positions[player.seat_id].y}%` }} />)}
+        holeCards={player.seat_id === me ? hole_cards : null} markers={markersBySeat.get(player.seat_id) ?? []} deadline={deadline}
+        side={positions[player.seat_id].y < 50 ? 'top' : 'bottom'} style={{ left: `${positions[player.seat_id].x}%`, top: `${positions[player.seat_id].y}%` }} />)}
       {flights.map((flight) => <ChipFlight key={flight.id} flight={flight} />)}
     </div>
   </section>;
