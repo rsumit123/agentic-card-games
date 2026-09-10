@@ -5,8 +5,11 @@ import { defaultHandlers } from '../../tests/fakes/handlers';
 import { FakeWebSocket } from '../../tests/fakes/FakeWebSocket';
 import type { ServerEvent } from '../domain/protocol';
 import type { TableView } from '../domain/table';
+import { SCENARIOS, currentScenario } from './scenarios';
 
-const baseSnapshot = snapshot as Extract<ServerEvent, { type: 'snapshot' }>;
+const scenarioKey = currentScenario();
+const scenario = scenarioKey ? SCENARIOS[scenarioKey] : null;
+const baseSnapshot = (scenario?.snapshot ?? snapshot) as Extract<ServerEvent, { type: 'snapshot' }>;
 let mockTable: TableView = {
   id: 7, room_code: 'ABCD-1234', host_user_id: 1, seat_count: 2 as const, starting_chips: 1000 as const,
   small_blind: 5 as const, big_blind: 10, status: 'lobby' as const, join_expires_at: null,
@@ -15,6 +18,20 @@ let mockTable: TableView = {
     { seat_number: 2, user_id: null, actor_type: 'human' as const, ai_tier: null, chip_count: 1000, display_name: null, spectating: true, model: null },
   ], final_rankings: [],
 };
+
+if (scenario) {
+  const pub = (baseSnapshot.payload as { public: { players: { seat_id: number; stack: number }[]; names: Record<number, string> } }).public;
+  mockTable = {
+    ...mockTable, ...scenario.table, status: 'in_progress' as const,
+    seats: pub.players.map((p) => ({
+      seat_number: p.seat_id, user_id: p.seat_id === 1 ? 1 : null,
+      actor_type: (p.seat_id === 1 || p.seat_id === 3 ? 'human' : 'ai') as 'human' | 'ai',
+      ai_tier: p.seat_id === 2 ? ('Hard' as const) : p.seat_id === 4 ? ('Easy' as const) : null,
+      chip_count: p.stack, display_name: pub.names[p.seat_id] ?? null, spectating: false,
+      model: p.seat_id === 2 ? 'google/gemini-3.7-flash' : p.seat_id === 4 ? 'openai/gpt-4o-mini' : null,
+    })),
+  } as TableView;
+}
 
 const mockHandlers = [
   http.get('http://localhost:8000/me/history', () => HttpResponse.json({
@@ -58,7 +75,7 @@ class MockWebSocket extends FakeWebSocket {
     super(url);
     queueMicrotask(() => {
       this.open();
-      this.receive({ ...baseSnapshot, payload: { ...baseSnapshot.payload, public: { ...baseSnapshot.payload.public, current_seat: 1 } } });
+      this.receive(scenario ? baseSnapshot : { ...baseSnapshot, payload: { ...baseSnapshot.payload, public: { ...baseSnapshot.payload.public, current_seat: 1 } } });
       this.sentSnapshot = true;
     });
   }
