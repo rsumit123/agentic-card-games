@@ -100,3 +100,17 @@ def test_holdem_schema_carries_the_legal_actions_the_validator_checks():
     assert schema["actions"], "the model needs the legal actions, with amounts"
     call = next(action for action in schema["actions"] if action["type"] == "call")
     assert validate_ai_reply({"type": "call"}, schema, revision=0) == {"type": "call", "amount": call["amount"]}
+
+
+def test_a_truncated_or_unparseable_reply_asks_again_rather_than_folding():
+    """A model that reasons in tokens can run out of budget mid-answer.
+
+    The provider hands back None for that, and losing the whole turn to a fold
+    would be worse than asking again inside the same deadline.
+    """
+    schema = {"actions": [{"type": "check"}]}
+    adapter = AIAdapter(FakeProvider(None), policy_for_tier("Hard"))
+
+    result = run(adapter.decide({}, schema, revision=1, deadline=datetime.now(timezone.utc) + timedelta(seconds=1)))
+
+    assert result is None

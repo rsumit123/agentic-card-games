@@ -30,5 +30,14 @@ class OpenRouterProvider:
                 json=payload,
             )
             response.raise_for_status()
-            content = response.json()["choices"][0]["message"]["content"]
-            return json.loads(content)
+            try:
+                content = response.json()["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, ValueError):
+                return None
+            try:
+                return json.loads(content)
+            except (TypeError, ValueError):
+                # A model that thinks in tokens can spend its whole budget before
+                # writing anything, leaving a half-finished object. Returning None
+                # lets the caller ask again instead of the seat losing its turn.
+                return None

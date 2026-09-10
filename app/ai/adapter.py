@@ -100,6 +100,8 @@ class AIAdapter:
             )
         except (asyncio.TimeoutError, TimeoutError):
             return ProposedAction({"type": "fold"}, revision, "provider_timeout")
+        if reply is None:
+            return None
         if isinstance(reply, Mapping) and "revision" in reply and reply.get("revision") != revision:
             return None
         action = validate_ai_reply(reply, legal_schema, revision)

@@ -41,7 +41,7 @@ _POLICIES = {
         "holdem-easy-v2",
         "action-v2",
         0.9,
-        220,
+        700,
         7000,
         ("openai/gpt-4o-mini",),
         guidance=(
@@ -55,7 +55,7 @@ _POLICIES = {
         "holdem-medium-v2",
         "action-v2",
         0.5,
-        260,
+        800,
         9000,
         ("openai/gpt-4o-mini",),
         guidance=(
@@ -70,7 +70,7 @@ _POLICIES = {
         "holdem-hard-v2",
         "action-v2",
         0.25,
-        320,
+        900,
         12000,
         ("openai/gpt-4o-mini",),
         guidance=(

@@ -159,7 +159,7 @@ How to play well:
   and you are on the button or in the small blind, most reasonable hands are worth playing."""
 
 REPLY_FORMAT = """Reply with JSON only, no prose outside it:
-{"reasoning": "<one short sentence explaining the choice>",
+{"reasoning": "<why, in at most 20 words>",
  "action": {"type": "<one of the legal action types>", "amount": <chips, only when that legal action carries an amount>}}"""
 
 
