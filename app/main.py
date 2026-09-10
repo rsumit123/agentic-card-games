@@ -10,6 +10,7 @@ from .models import User
 from .routes.auth import router as auth_router
 from .routes.tables import router as tables_router
 from .rooms.service import RoomStore
+from .rooms.recovery import recover_incomplete_hands
 from .settings import Settings
 
 
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = sessions
     app.state.room_store = RoomStore(sessions)
+    app.state.recovery_notices = recover_incomplete_hands(sessions)
     app.state.UserModel = User
     app.state.validate_websocket_origin = validate_websocket_origin
     app.include_router(health_router)
