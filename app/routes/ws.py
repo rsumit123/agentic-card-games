@@ -15,6 +15,7 @@ router = APIRouter()
 
 @router.websocket("/ws/tables/{table_id}")
 async def table_socket(websocket: WebSocket, table_id: int):
+    await websocket.accept()
     origin = websocket.headers.get("origin")
     if not validate_websocket_origin(origin, websocket.app.state.settings.allowed_origins):
         await websocket.close(code=4403)
@@ -31,7 +32,6 @@ async def table_socket(websocket: WebSocket, table_id: int):
         await websocket.close(code=4403)
         return
 
-    await websocket.accept()
     queue = websocket.app.state.room_manager.connect(table_id, seat.seat_number)
     notice = websocket.app.state.recovery_notices_by_table.get(table_id)
     await websocket.send_json(
@@ -56,10 +56,22 @@ async def table_socket(websocket: WebSocket, table_id: int):
             if receive_task in done:
                 command = receive_task.result()
                 receive_task = asyncio.create_task(websocket.receive_json())
-                if actor.state.current_seat != seat.seat_number:
-                    await websocket.send_json({"type": "error", "code": "invalid_action", "message": "out of turn", "revision": actor.revision})
+                try:
+                    legal_actions = actor.module.legal_actions(actor.state, seat.seat_number)
+                except KeyError:
+                    legal_actions = ()
+                if not legal_actions:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "code": "invalid_action",
+                            "message": "out of turn",
+                            "revision": actor.revision,
+                            "idempotency_key": command.get("idempotency_key") if isinstance(command, dict) else None,
+                        }
+                    )
                     continue
-                result = actor.submit(command, seat_id=seat.seat_number)
+                result = websocket.app.state.room_manager.submit(table_id, seat.seat_number, command)
                 if isinstance(result, Ack):
                     await websocket.send_json(
                         jsonable_encoder(
@@ -84,7 +96,18 @@ async def table_socket(websocket: WebSocket, table_id: int):
                     )
                 else:
                     assert isinstance(result, CommandError)
-                    await websocket.send_json(jsonable_encoder({"type": "error", "code": result.code, "message": result.message, "revision": result.current_revision}))
+                    idempotency_key = command.get("idempotency_key") if isinstance(command, dict) else None
+                    await websocket.send_json(
+                        jsonable_encoder(
+                            {
+                                "type": "error",
+                                "code": result.code,
+                                "message": result.message,
+                                "revision": result.current_revision,
+                                "idempotency_key": idempotency_key,
+                            }
+                        )
+                    )
     except WebSocketDisconnect:
         return
     finally:

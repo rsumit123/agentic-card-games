@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from itsdangerous import TimestampSigner
@@ -10,7 +11,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from app.main import create_app
-from app.models import Seat, Table, User
+from app.models import Hand, Seat, Table, User
 from app.rooms.service import (
     ExpiredTable,
     FullTable,
@@ -119,7 +120,34 @@ def test_host_can_fill_empty_seat_with_ai_and_start(app_and_store):
 
     assert view.seats[1].actor_type == "ai"
     assert view.seats[1].ai_tier == "Hard"
+    assert view.seats[1].display_name == "Hard player"
+    assert view.seats[1].spectating is False
     assert started.status == "in_progress"
+
+
+def test_table_view_exposes_names_spectators_and_final_rankings(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+
+    assert created.seats[0].display_name == "Host"
+    assert created.seats[0].spectating is False
+    assert created.seats[1].display_name is None
+    assert created.seats[1].spectating is True
+
+    store.join_table(2, created.room_code)
+    store.start_table(1, created.id)
+    with app.state.session_factory() as session:
+        table = session.get(Table, created.id)
+        table.status = "ended"
+        table.seats[0].chip_count = 25
+        table.seats[1].chip_count = 75
+        session.commit()
+        view = store._view(table)
+
+    assert [(item.seat_number, item.display_name, item.chip_count) for item in view.final_rankings] == [
+        (2, "Player", 75),
+        (1, "Host", 25),
+    ]
 
 
 def test_http_start_registers_actor_for_real_table(app_and_store):
@@ -137,3 +165,70 @@ def test_http_start_registers_actor_for_real_table(app_and_store):
 
     assert response.status_code == 200
     assert app.state.room_manager.get(created.id) is not None
+
+
+def test_lifecycle_routes_transfer_host_and_end_with_rankings(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+    store.join_table(2, created.room_code)
+    store.start_table(1, created.id)
+    actor = app.state.room_manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as client:
+        client.cookies.set("session", TimestampSigner("development-only-change-me").sign(
+            base64.b64encode(json.dumps({"user_id": 1, "csrf_token": "csrf"}).encode()).decode()
+        ).decode())
+        blocked = client.post(f"/tables/{created.id}/end", headers={"X-CSRF-Token": "csrf"})
+        assert blocked.status_code == 409
+        assert blocked.json()["detail"] == "session can only end between hands"
+
+        actor.begin_hand(replace(actor.state, street="complete", current_seat=None))
+        ended = client.post(f"/tables/{created.id}/end", headers={"X-CSRF-Token": "csrf"})
+
+    assert ended.status_code == 200
+    assert ended.json()["status"] == "ended"
+    assert ended.json()["final_rankings"]
+
+
+def test_leave_route_transfers_host_and_emits_session_event(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+    store.join_table(2, created.room_code)
+    store.start_table(1, created.id)
+    actor = app.state.room_manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+    actor.begin_hand(replace(actor.state, street="complete", current_seat=None))
+    other_queue = app.state.room_manager.connect(created.id, 2)
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as client:
+        client.cookies.set("session", TimestampSigner("development-only-change-me").sign(
+            base64.b64encode(json.dumps({"user_id": 1, "csrf_token": "csrf"}).encode()).decode()
+        ).decode())
+        response = client.post(f"/tables/{created.id}/leave", headers={"X-CSRF-Token": "csrf"})
+
+    assert response.status_code == 200
+    assert response.json()["host_user_id"] == 2
+    assert response.json()["seats"][0]["spectating"] is True
+    event = other_queue.get_nowait()
+    assert event["type"] == "session"
+    assert event["host_user_id"] == 2
+
+
+def test_start_creates_active_hand_and_actor_projection_has_names(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+    store.join_table(2, created.room_code)
+    store.start_table(1, created.id)
+
+    actor = app.state.room_manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+
+    with app.state.session_factory() as session:
+        hands = session.query(Hand).filter(Hand.table_id == created.id).all()
+
+    assert len(hands) == 1
+    assert hands[0].status == "active"
+    assert hands[0].pre_hand_balances == {"1": 1000, "2": 1000}
+    assert actor.snapshot_for(1)["public"]["names"] == {1: "Host", 2: "Player"}

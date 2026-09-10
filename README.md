@@ -4,7 +4,7 @@ The Common Table is a self-managed, play-money Texas Hold'em table service. Vers
 
 ## Local deployment
 
-1. Copy `.env.example` to `.env` and set a long random `SESSION_SECRET`, the Google OAuth client values, and the public `ALLOWED_ORIGIN`.
+1. Copy `.env.example` to `.env` and set a long random `SESSION_SECRET`, the Google OAuth client values, `FRONTEND_URL`, and the exact frontend origins in `ALLOWED_ORIGINS`.
 2. Run `docker compose up -d --build`.
 3. Check `curl http://127.0.0.1:8000/healthz` and inspect `docker compose ps`.
 
@@ -36,11 +36,11 @@ location / {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
-    proxy_read_timeout 75s;
+    proxy_read_timeout 300s;
 }
 ```
 
-Use a certificate for the public hostname, redirect HTTP to HTTPS, and set `ALLOWED_ORIGIN` to the exact HTTPS origin. Session cookies become Secure in production. Do not expose the container port publicly when Nginx runs on the same VM.
+Use a certificate for the public hostname, redirect HTTP to HTTPS, and set `ALLOWED_ORIGINS` to the exact HTTPS frontend origin(s). Session cookies become Secure and `SameSite=None` in production. Do not expose the container port publicly when Nginx runs on the same VM.
 
 ## Development
 

@@ -9,6 +9,7 @@ from app.ai.adapter import ProposedAction
 from app.rooms.actor import RoomActor
 from app.rooms.manager import RoomManager
 from app.rooms.protocol import Ack
+from app.models import Hand, Seat, Table, User
 
 
 RANDOM_BYTES = bytes(range(256)) * 4
@@ -104,3 +105,104 @@ def test_room_manager_invokes_ai_and_publishes_its_accepted_action():
     assert adapter.calls == 1
     assert actor.revision == 1
     assert queue.get_nowait()["type"] == "state"
+
+
+def test_completed_hand_writes_back_chips_and_starts_next_hand_after_reveal(tmp_path):
+    from app.db import build_engine, initialize_database, session_factory
+    from app.settings import Settings
+
+    settings = Settings(database_url=f"sqlite:///{tmp_path}/progression.db", data_dir=tmp_path)
+    engine = build_engine(settings)
+    initialize_database(engine)
+    sessions = session_factory(engine)
+    with sessions() as session:
+        host = User(google_subject="host", display_name="Host")
+        player = User(google_subject="player", display_name="Player")
+        session.add_all([host, player])
+        session.flush()
+        table = Table(
+            host_user_id=host.id,
+            room_code_hash="progression",
+            seat_count=2,
+            starting_chips=1000,
+            small_blind=5,
+            big_blind=10,
+            status="in_progress",
+            seats=[
+                Seat(seat_number=1, user_id=host.id, chip_count=1000, is_funded=True),
+                Seat(seat_number=2, user_id=player.id, chip_count=1000, is_funded=True),
+            ],
+        )
+        session.add(table)
+        session.commit()
+        table_id = table.id
+
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    current = [now]
+    manager = RoomManager(clock=lambda: current[0], hand_reveal_seconds=6, session_factory=sessions)
+    actor = manager.ensure_actor_for_table(table_id, sessions, settings)
+    manager.submit(table_id, 1, {"expected_revision": 0, "idempotency_key": "fold-1", "action": {"type": "fold"}})
+
+    with sessions() as session:
+        hands = session.query(Hand).filter(Hand.table_id == table_id).order_by(Hand.id).all()
+        seats = session.query(Seat).filter(Seat.table_id == table_id).order_by(Seat.seat_number).all()
+    assert hands[0].status == "completed"
+    assert [seat.chip_count for seat in seats] == [995, 1005]
+    assert actor.state.street == "complete"
+
+    current[0] = now + timedelta(seconds=5)
+    asyncio.run(manager.run_once(table_id))
+    assert actor.state.street == "complete"
+    current[0] = now + timedelta(seconds=7)
+    asyncio.run(manager.run_once(table_id))
+
+    with sessions() as session:
+        hands = session.query(Hand).filter(Hand.table_id == table_id).order_by(Hand.id).all()
+    assert len(hands) == 2
+    assert hands[1].status == "active"
+    assert actor.state.street == "preflop"
+    assert actor.revision == 2
+
+
+def test_leave_during_hand_is_applied_at_hand_boundary(tmp_path):
+    from app.db import build_engine, initialize_database, session_factory
+    from app.settings import Settings
+
+    settings = Settings(database_url=f"sqlite:///{tmp_path}/leave.db", data_dir=tmp_path)
+    engine = build_engine(settings)
+    initialize_database(engine)
+    sessions = session_factory(engine)
+    with sessions() as session:
+        host = User(google_subject="host", display_name="Host")
+        player = User(google_subject="player", display_name="Player")
+        session.add_all([host, player])
+        session.flush()
+        table = Table(
+            host_user_id=host.id,
+            room_code_hash="leave",
+            seat_count=2,
+            starting_chips=1000,
+            small_blind=5,
+            big_blind=10,
+            status="in_progress",
+            seats=[
+                Seat(seat_number=1, user_id=host.id, chip_count=1000),
+                Seat(seat_number=2, user_id=player.id, chip_count=1000),
+            ],
+        )
+        session.add(table)
+        session.commit()
+        table_id = table.id
+
+    manager = RoomManager(session_factory=sessions)
+    actor = manager.ensure_actor_for_table(table_id, sessions, settings)
+    manager.leave(table_id, 1)
+    manager.submit(table_id, 1, {"expected_revision": 0, "idempotency_key": "leave-fold", "action": {"type": "fold"}})
+
+    with sessions() as session:
+        table = session.get(Table, table_id)
+        seats = session.query(Seat).filter(Seat.table_id == table_id).order_by(Seat.seat_number).all()
+    assert table.host_user_id == 2
+    assert seats[0].present is False
+    assert seats[1].present is True
+    assert actor.state.street == "complete"

@@ -27,6 +27,7 @@ class RoomActor:
         action_timeout: timedelta = timedelta(seconds=30),
         session_factory_=None,
         data_path: Path | None = None,
+        player_names: Mapping[int, str | None] | None = None,
     ):
         self.table_id = table_id
         self.state = state
@@ -38,6 +39,7 @@ class RoomActor:
         self._seen: dict[str, Ack] = {}
         self._lock = threading.RLock()
         self._session_factory = session_factory_
+        self.player_names = dict(player_names or {})
         if data_path is not None:
             settings = Settings(database_url=f"sqlite:///{Path(data_path)}", data_dir=Path(data_path).parent)
             engine = build_engine(settings)
@@ -58,7 +60,26 @@ class RoomActor:
     def snapshot_for(self, seat_id: int | None) -> Mapping[str, Any]:
         if seat_id is None:
             return self.module.public_projection(self.state)
-        return self.module.seat_projection(self.state, seat_id)
+        try:
+            projection = dict(self.module.seat_projection(self.state, seat_id))
+        except KeyError:
+            projection = {
+                "public": self.module.public_projection(self.state),
+                "hole_cards": (),
+                "seat_id": seat_id,
+                "legal_actions": (),
+                "hand_rank": None,
+            }
+        public = dict(projection["public"])
+        public["names"] = {player.seat_id: self.player_names.get(player.seat_id) for player in self.state.players}
+        projection["public"] = public
+        return projection
+
+    def begin_hand(self, state: HoldemState) -> None:
+        with self._lock:
+            self.state = state
+            self.revision += 1
+            self._deadline = self.now + self.action_timeout if state.current_seat is not None else None
 
     def resync(self, seat_id: int | None, *, since_revision: int | None = None) -> dict[str, Any]:
         return {

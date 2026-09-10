@@ -91,6 +91,25 @@ def test_callback_creates_then_loads_same_user(monkeypatch, tmp_path):
             assert session.query(app.state.UserModel).count() == 1
 
 
+def test_login_return_to_allows_configured_preview_origin(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/auth-return-to.db")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "http://localhost:5173,https://preview.example.com")
+    app = create_app()
+    app.state.exchange_code = lambda _code: "opaque-token"
+    app.state.google_token_verifier = lambda _token, **kwargs: claims(nonce=kwargs["expected_nonce"])
+
+    with TestClient(app) as client:
+        login = client.get("/auth/login?return_to=https://preview.example.com", follow_redirects=False)
+        query = parse_qs(urlparse(login.headers["location"]).query)
+        callback = client.get(
+            f"/auth/callback?code=code-1&state={query['state'][0]}",
+            follow_redirects=False,
+        )
+
+    assert callback.status_code == 303
+    assert callback.headers["location"] == "https://preview.example.com/"
+
+
 def test_callback_rejects_invalid_state(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/auth.db")
     app = create_app()

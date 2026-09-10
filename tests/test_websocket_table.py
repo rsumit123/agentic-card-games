@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import base64
 import json
+import asyncio
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
+from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 from itsdangerous import TimestampSigner
 
@@ -21,6 +24,7 @@ from app.rooms.lifecycle import (
     start_table,
 )
 from app.rooms.service import FullTable, TableConfig
+from app.routes.ws import table_socket
 
 
 RANDOM_BYTES = bytes(range(256)) * 4
@@ -153,6 +157,51 @@ def test_websocket_rejects_bad_origin(monkeypatch, tmp_path):
     app = __import__("app.main", fromlist=["create_app"]).create_app()
     with TestClient(app) as client:
         client.cookies.set("session", _session_cookie(1))
-        with pytest.raises(Exception):
-            with client.websocket_connect("/ws/tables/999", headers={"origin": "https://evil.example"}):
-                pass
+        with client.websocket_connect("/ws/tables/999", headers={"origin": "https://evil.example"}) as websocket:
+            with pytest.raises(WebSocketDisconnect) as error:
+                websocket.receive_json()
+        assert error.value.code == 4403
+
+
+def test_websocket_accepts_before_sending_browser_visible_close_code():
+    events = []
+    websocket = SimpleNamespace(
+        headers={"origin": "https://evil.example"},
+        session={},
+        app=SimpleNamespace(state=SimpleNamespace(settings=SimpleNamespace(allowed_origins=("http://localhost:8000",)))),
+    )
+
+    async def accept():
+        events.append("accept")
+
+    async def close(*, code):
+        events.append(f"close:{code}")
+
+    websocket.accept = accept
+    websocket.close = close
+
+    asyncio.run(table_socket(websocket, 999))
+
+    assert events == ["accept", "close:4403"]
+
+
+def test_websocket_reports_unauthenticated_close_after_accept():
+    events = []
+    websocket = SimpleNamespace(
+        headers={"origin": "http://localhost:8000"},
+        session={},
+        app=SimpleNamespace(state=SimpleNamespace(settings=SimpleNamespace(allowed_origins=("http://localhost:8000",)))),
+    )
+
+    async def accept():
+        events.append("accept")
+
+    async def close(*, code):
+        events.append(f"close:{code}")
+
+    websocket.accept = accept
+    websocket.close = close
+
+    asyncio.run(table_socket(websocket, 999))
+
+    assert events == ["accept", "close:4401"]

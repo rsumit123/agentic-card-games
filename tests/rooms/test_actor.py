@@ -48,6 +48,18 @@ def test_snapshot_and_reconnect_only_include_recipient_hole_cards():
     assert resync["snapshot"] == seat_zero
 
 
+def test_snapshot_for_spectator_has_public_state_without_private_cards():
+    state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)
+    actor = RoomActor(42, state)
+
+    spectator = actor.snapshot_for(2)
+
+    assert spectator["seat_id"] == 2
+    assert spectator["hole_cards"] == ()
+    assert spectator["legal_actions"] == ()
+    assert spectator["hand_rank"] is None
+
+
 def test_tick_auto_folds_expired_turn():
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
     state = start_hand({0: 100, 1: 100}, random_bytes=RANDOM_BYTES)

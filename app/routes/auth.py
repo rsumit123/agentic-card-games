@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -26,6 +27,14 @@ async def login(request: Request):
     nonce = secrets.token_urlsafe(32)
     request.session["oauth_state"] = state
     request.session["oauth_nonce"] = nonce
+    request.session.pop("oauth_return_to", None)
+    return_to = request.query_params.get("return_to")
+    if return_to:
+        parsed = urlparse(return_to)
+        origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else ""
+        allowed = {item.rstrip("/") for item in request.app.state.settings.allowed_origins}
+        if origin.rstrip("/") in allowed and parsed.scheme in {"http", "https"}:
+            request.session["oauth_return_to"] = return_to
     return RedirectResponse(
         google_authorization_url(request.app.state.settings, state, nonce),
         status_code=status.HTTP_307_TEMPORARY_REDIRECT,
@@ -72,7 +81,8 @@ async def callback(request: Request, code: str | None = None, state: str | None 
 
     request.session["user_id"] = user.id
     request.session["csrf_token"] = secrets.token_urlsafe(32)
-    return RedirectResponse(f"{settings.frontend_url.rstrip('/')}/", status_code=status.HTTP_303_SEE_OTHER)
+    return_to = request.session.pop("oauth_return_to", None) or settings.frontend_url
+    return RedirectResponse(f"{return_to.rstrip('/')}/", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/me")

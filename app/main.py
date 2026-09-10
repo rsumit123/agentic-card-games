@@ -54,7 +54,10 @@ def create_app() -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = sessions
     app.state.room_store = RoomStore(sessions)
-    app.state.room_manager = RoomManager()
+    app.state.room_manager = RoomManager(
+        hand_reveal_seconds=settings.hand_reveal_seconds,
+        session_factory=sessions,
+    )
     app.state.recovery_notices = recover_incomplete_hands(sessions)
     app.state.recovery_notices_by_table = {
         notice.table_id: notice.message for notice in app.state.recovery_notices

@@ -45,6 +45,7 @@ class TableClosed(TableError):
 class TableStatus(StrEnum):
     LOBBY = "lobby"
     IN_PROGRESS = "in_progress"
+    ENDED = "ended"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
@@ -75,6 +76,15 @@ class SeatView:
     actor_type: str
     ai_tier: str | None
     chip_count: int
+    display_name: str | None = None
+    spectating: bool = True
+
+
+@dataclass(frozen=True)
+class FinalRankingView:
+    seat_number: int
+    display_name: str | None
+    chip_count: int
 
 
 @dataclass(frozen=True)
@@ -89,6 +99,7 @@ class TableView:
     status: str
     join_expires_at: datetime | None
     seats: tuple[SeatView, ...]
+    final_rankings: tuple[FinalRankingView, ...] = ()
 
 
 class RoomStore:
@@ -130,9 +141,23 @@ class RoomStore:
 
     def _view(self, table: Table, *, room_code: str | None = None) -> TableView:
         seats = tuple(
-            SeatView(seat.seat_number, seat.user_id, seat.actor_type, seat.ai_tier, seat.chip_count)
+            SeatView(
+                seat.seat_number,
+                seat.user_id,
+                seat.actor_type,
+                seat.ai_tier,
+                seat.chip_count,
+                self._display_name(seat),
+                (seat.user_id is None and seat.actor_type != "ai") or not seat.present or seat.chip_count <= 0,
+            )
             for seat in sorted(table.seats, key=lambda value: value.seat_number)
         )
+        final_rankings = ()
+        if table.status == TableStatus.ENDED.value:
+            final_rankings = tuple(
+                FinalRankingView(seat.seat_number, self._display_name(seat), seat.chip_count)
+                for seat in sorted(table.seats, key=lambda item: (-item.chip_count, item.seat_number))
+            )
         return TableView(
             id=table.id,
             room_code=room_code,
@@ -144,7 +169,14 @@ class RoomStore:
             status=table.status,
             join_expires_at=table.join_expires_at,
             seats=seats,
+            final_rankings=final_rankings,
         )
+
+    @staticmethod
+    def _display_name(seat: Seat) -> str | None:
+        if seat.user_id is None:
+            return f"{seat.ai_tier or 'AI'} player" if seat.actor_type == "ai" else None
+        return seat.user.display_name if seat.user is not None else None
 
     def create_table(
         self,
@@ -174,6 +206,7 @@ class RoomStore:
                     actor_type="human",
                     chip_count=config.starting_chips,
                     is_funded=True,
+                    present=True,
                 )
             )
             for seat_number in range(2, config.seat_count + 1):
@@ -182,6 +215,7 @@ class RoomStore:
                         seat_number=seat_number,
                         chip_count=config.starting_chips,
                         is_funded=True,
+                        present=False,
                     )
                 )
             session.add(table)
@@ -219,6 +253,7 @@ class RoomStore:
             empty.actor_type = "human"
             empty.chip_count = table.starting_chips
             empty.is_funded = True
+            empty.present = True
             session.commit()
             return self._view(table)
 
@@ -277,5 +312,6 @@ class RoomStore:
             seat.ai_tier = tier
             seat.chip_count = table.starting_chips
             seat.is_funded = True
+            seat.present = True
             session.commit()
             return self._view(table)

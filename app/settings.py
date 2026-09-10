@@ -19,6 +19,7 @@ class Settings:
     allowed_origin: str = "http://localhost:8000"
     allowed_origins: tuple[str, ...] = ("http://localhost:5173", "http://localhost:8000")
     frontend_url: str = "http://localhost:5173"
+    hand_reveal_seconds: float = 6.0
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -37,4 +38,5 @@ class Settings:
             allowed_origin=allowed_origins[0] if allowed_origins else cls.allowed_origin,
             allowed_origins=allowed_origins,
             frontend_url=os.getenv("FRONTEND_URL", cls.frontend_url),
+            hand_reveal_seconds=float(os.getenv("HAND_REVEAL_SECONDS", str(cls.hand_reveal_seconds))),
         )

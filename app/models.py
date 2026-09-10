@@ -54,6 +54,7 @@ class Seat(Base):
     ai_tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
     chip_count: Mapped[int] = mapped_column(Integer, default=0)
     is_funded: Mapped[bool] = mapped_column(Boolean, default=True)
+    present: Mapped[bool] = mapped_column(Boolean, default=True)
 
     table: Mapped[Table] = relationship(back_populates="seats")
     user: Mapped[User | None] = relationship(back_populates="seats")

@@ -1,27 +1,43 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
-from .actor import RoomActor
-from .protocol import Ack
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy import select
+
 from ..ai.adapter import AIAdapter
 from ..ai.openrouter import OpenRouterProvider
 from ..ai.policy import policy_for_tier
-from ..games.holdem.engine import start_hand
-from ..models import Seat, Table
-from sqlalchemy import select
+from ..games.holdem.engine import public_projection, start_hand
+from ..models import Hand, Seat, Table
+from .actor import RoomActor
+from .lifecycle import SessionSeat, SessionState, end_session, finish_hand, leave_between_hands
+from .protocol import Ack
 
 
 class RoomManager:
-    def __init__(self, *, clock=None, poll_interval: float = 0.25):
+    def __init__(
+        self,
+        *,
+        clock=None,
+        poll_interval: float = 0.25,
+        hand_reveal_seconds: float = 6,
+        session_factory=None,
+    ):
         self._actors: dict[int, RoomActor] = {}
         self._connections: dict[int, dict[int, asyncio.Queue]] = {}
         self._ai_adapters: dict[int, dict[int, object]] = {}
         self._ai_inflight: set[tuple[int, int, int]] = set()
+        self._session_states: dict[int, SessionState] = {}
+        self._reveal_deadlines: dict[int, datetime] = {}
+        self._active_hand_ids: dict[int, int] = {}
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self.poll_interval = poll_interval
+        self.hand_reveal_seconds = hand_reveal_seconds
+        self._session_factory = session_factory
 
     def register(self, table_id: int, actor: RoomActor) -> None:
         self._actors[table_id] = actor
@@ -60,6 +76,7 @@ class RoomManager:
         existing = self.get(table_id)
         if existing is not None:
             return existing
+        self._session_factory = session_factory
         with session_factory() as session:
             table = session.get(Table, table_id)
             if table is None:
@@ -68,15 +85,21 @@ class RoomManager:
             stacks = {
                 seat.seat_number: seat.chip_count
                 for seat in seats
-                if seat.seat_number <= table.seat_count and (seat.user_id is not None or seat.actor_type == "ai")
+                if seat.seat_number <= table.seat_count
+                and seat.present
+                and seat.chip_count > 0
+                and (seat.user_id is not None or seat.actor_type == "ai")
             }
-            state = start_hand(
-                stacks,
-                small_blind=table.small_blind,
-                big_blind=table.big_blind,
-            )
-        actor = RoomActor(table_id, state, session_factory_=session_factory)
+            state = start_hand(stacks, small_blind=table.small_blind, big_blind=table.big_blind)
+            names = {seat.seat_number: self._display_name(seat) for seat in seats}
+            session_state = self._session_state(table, seats, hand_in_progress=True)
+
+        actor = RoomActor(table_id, state, session_factory_=session_factory, player_names=names)
         self.register(table_id, actor)
+        self._session_states[table_id] = session_state
+        self._active_hand_ids[table_id] = self._record_hand_start(
+            table_id, state, stacks, session_factory, actor
+        )
         if settings and settings.openrouter_api_key:
             provider = OpenRouterProvider(settings.openrouter_api_key)
             for seat in seats:
@@ -85,17 +108,38 @@ class RoomManager:
         return actor
 
     def restore_in_progress(self, session_factory, settings=None) -> None:
+        self._session_factory = session_factory
         with session_factory() as session:
             table_ids = session.scalars(select(Table.id).where(Table.status == "in_progress")).all()
         for table_id in table_ids:
             self.ensure_actor_for_table(table_id, session_factory, settings)
 
+    def submit(self, table_id: int, seat_id: int, command) -> Ack | object:
+        actor = self._actors.get(table_id)
+        if actor is None:
+            raise ValueError("table actor is not registered")
+        before = actor.state
+        result = actor.submit(command, seat_id=seat_id)
+        if isinstance(result, Ack):
+            self._after_transition(table_id, actor, before)
+        return result
+
     async def run_once(self, table_id: int) -> None:
         actor = self._actors.get(table_id)
         if actor is None:
             return
-        timeout_result = actor.tick(self._clock())
+        now = self._now()
+        reveal_deadline = self._reveal_deadlines.get(table_id)
+        if reveal_deadline is not None:
+            if now < reveal_deadline:
+                return
+            self._start_next_hand(table_id, actor)
+            return
+
+        before = actor.state
+        timeout_result = actor.tick(now)
         if isinstance(timeout_result, Ack):
+            self._after_transition(table_id, actor, before)
             self._publish_state(table_id, actor)
             return
 
@@ -116,18 +160,130 @@ class RoomManager:
             )
             if proposed is None or proposed.revision != actor.revision:
                 return
-            result = actor.submit(
+            result = self.submit(
+                table_id,
+                seat_id,
                 {
                     "expected_revision": proposed.revision,
                     "idempotency_key": f"ai:{seat_id}:{proposed.revision}",
                     "action": proposed.action,
                 },
-                seat_id=seat_id,
             )
             if isinstance(result, Ack):
                 self._publish_state(table_id, actor)
         finally:
             self._ai_inflight.discard(key)
+
+    def leave(self, table_id: int, user_id: int) -> None:
+        actor = self._actors.get(table_id)
+        state = self._session_states.get(table_id) or self._load_session_state(
+            table_id, actor is not None and actor.state.street != "complete"
+        )
+        next_state = leave_between_hands(
+            replace(state, hand_in_progress=actor is not None and actor.state.street != "complete"),
+            user_id,
+        )
+        self._session_states[table_id] = next_state
+        if not next_state.pending_leaves:
+            self._persist_session_state(table_id, next_state)
+        self.publish_session(table_id)
+
+    def end(self, table_id: int, user_id: int) -> None:
+        actor = self._actors.get(table_id)
+        state = self._session_states.get(table_id) or self._load_session_state(
+            table_id, actor is not None and actor.state.street != "complete"
+        )
+        next_state = end_session(
+            replace(state, hand_in_progress=actor is not None and actor.state.street != "complete"),
+            user_id,
+        )
+        self._session_states[table_id] = next_state
+        self._persist_session_state(table_id, next_state)
+        self.publish_session(table_id)
+
+    def _after_transition(self, table_id: int, actor: RoomActor, before) -> None:
+        if before.street != "complete" and actor.state.street == "complete":
+            self._complete_hand(table_id, actor)
+
+    def _complete_hand(self, table_id: int, actor: RoomActor) -> None:
+        if self._session_factory is None:
+            return
+        state = self._session_states.get(table_id) or self._load_session_state(table_id, hand_in_progress=True)
+        chip_counts = {player.seat_id: player.stack for player in actor.state.players}
+        next_session_state = finish_hand(replace(state, hand_in_progress=True), chip_counts)
+        with self._session_factory() as session:
+            table = session.get(Table, table_id)
+            if table is None:
+                return
+            active_hand = session.scalar(
+                select(Hand)
+                .where(Hand.table_id == table_id, Hand.status == "active")
+                .order_by(Hand.id.desc())
+            )
+            if active_hand is not None:
+                active_hand.status = "completed"
+                active_hand.finished_at = self._now()
+                active_hand.state_snapshot = jsonable_encoder(public_projection(actor.state))
+            for player in actor.state.players:
+                seat = next((item for item in table.seats if item.seat_number == player.seat_id), None)
+                if seat is not None:
+                    seat.chip_count = player.stack
+                    seat.is_funded = player.stack > 0
+            table.current_revision = actor.revision
+            table.status = next_session_state.status
+            if next_session_state.host_user_id is not None:
+                table.host_user_id = next_session_state.host_user_id
+            if not next_session_state.pending_leaves:
+                for seat_state in next_session_state.seats:
+                    seat = next((item for item in table.seats if item.seat_number == seat_state.seat_id), None)
+                    if seat is not None:
+                        seat.present = seat_state.present
+            session.commit()
+
+        self._session_states[table_id] = next_session_state
+        self._active_hand_ids.pop(table_id, None)
+        if next_session_state.status == "in_progress":
+            self._reveal_deadlines[table_id] = self._now() + timedelta(seconds=self.hand_reveal_seconds)
+        else:
+            self._reveal_deadlines.pop(table_id, None)
+        self.publish_session(table_id)
+
+    def _start_next_hand(self, table_id: int, actor: RoomActor) -> None:
+        state = self._session_states.get(table_id)
+        if state is None:
+            return
+        stacks = {seat.seat_id: seat.chips for seat in state.seats if seat.present and seat.chips > 0}
+        if len(stacks) < 2:
+            ended = replace(
+                state,
+                status="ended",
+                hand_in_progress=False,
+                final_rankings=tuple(sorted(state.seats, key=lambda seat: (-seat.chips, seat.seat_id))),
+            )
+            self._session_states[table_id] = ended
+            self._persist_session_state(table_id, ended)
+            self._reveal_deadlines.pop(table_id, None)
+            self.publish_session(table_id)
+            return
+        next_hand = start_hand(
+            stacks,
+            dealer_seat=actor.state.dealer_seat + 1,
+            small_blind=actor.state.small_blind,
+            big_blind=actor.state.big_blind,
+            hand_number=actor.state.hand_number + 1,
+        )
+        actor.begin_hand(next_hand)
+        self._session_states[table_id] = replace(
+            state,
+            hand_in_progress=True,
+            seats=tuple(replace(seat, chips=stacks.get(seat.seat_id, seat.chips)) for seat in state.seats),
+            final_rankings=(),
+        )
+        self._reveal_deadlines.pop(table_id, None)
+        self._active_hand_ids[table_id] = self._record_hand_start(
+            table_id, next_hand, stacks, self._session_factory, actor
+        )
+        self._publish_state(table_id, actor)
 
     def _publish_state(self, table_id: int, actor: RoomActor) -> None:
         self.publish(
@@ -140,6 +296,13 @@ class RoomManager:
             },
         )
 
+    def publish_session(self, table_id: int) -> None:
+        actor = self._actors.get(table_id)
+        if actor is None or self._session_factory is None:
+            return
+        event = self._session_event(table_id, actor.revision)
+        self.publish(table_id, lambda _seat_id: event)
+
     async def run_forever(self, stop_event: asyncio.Event) -> None:
         while not stop_event.is_set():
             for table_id in tuple(self._actors):
@@ -148,3 +311,127 @@ class RoomManager:
                 await asyncio.wait_for(stop_event.wait(), timeout=self.poll_interval)
             except asyncio.TimeoutError:
                 pass
+
+    def _record_hand_start(self, table_id: int, state, balances: dict[int, int], session_factory, actor: RoomActor) -> int:
+        with session_factory() as session:
+            active = session.scalar(
+                select(Hand)
+                .where(Hand.table_id == table_id, Hand.status == "active")
+                .order_by(Hand.id.desc())
+            )
+            if active is not None:
+                return active.id
+            hand = Hand(
+                table_id=table_id,
+                status="active",
+                pre_hand_balances={str(seat_id): chips for seat_id, chips in balances.items()},
+                state_snapshot=jsonable_encoder(public_projection(state)),
+            )
+            session.add(hand)
+            table = session.get(Table, table_id)
+            if table is not None:
+                table.current_revision = actor.revision
+            session.commit()
+            return hand.id
+
+    def _load_session_state(self, table_id: int, hand_in_progress: bool) -> SessionState:
+        if self._session_factory is None:
+            raise ValueError("session factory is not configured")
+        with self._session_factory() as session:
+            table = session.get(Table, table_id)
+            if table is None:
+                raise ValueError("table does not exist")
+            seats = session.scalars(select(Seat).where(Seat.table_id == table_id)).all()
+            return self._session_state(table, seats, hand_in_progress=hand_in_progress)
+
+    @staticmethod
+    def _session_state(table: Table, seats: list[Seat], *, hand_in_progress: bool) -> SessionState:
+        return SessionState(
+            table_id=table.id,
+            host_user_id=table.host_user_id,
+            seats=tuple(
+                SessionSeat(
+                    seat_id=seat.seat_number,
+                    user_id=seat.user_id,
+                    actor_type=seat.actor_type,
+                    chips=seat.chip_count,
+                    joined_order=seat.seat_number,
+                    present=seat.present and (seat.user_id is not None or seat.actor_type == "ai"),
+                    display_name=RoomManager._display_name(seat),
+                )
+                for seat in sorted(seats, key=lambda item: item.seat_number)
+                if seat.seat_number <= table.seat_count
+            ),
+            status=table.status,
+            hand_in_progress=hand_in_progress,
+        )
+
+    @staticmethod
+    def _display_name(seat: Seat) -> str | None:
+        if seat.user_id is not None:
+            return seat.user.display_name if seat.user is not None else None
+        return f"{seat.ai_tier or 'AI'} player" if seat.actor_type == "ai" else None
+
+    def _persist_session_state(self, table_id: int, state: SessionState) -> None:
+        if self._session_factory is None:
+            return
+        with self._session_factory() as session:
+            table = session.get(Table, table_id)
+            if table is None:
+                return
+            table.status = state.status
+            if state.host_user_id is not None:
+                table.host_user_id = state.host_user_id
+            by_seat = {seat.seat_id: seat for seat in state.seats}
+            for seat in table.seats:
+                seat_state = by_seat.get(seat.seat_number)
+                if seat_state is not None:
+                    seat.chip_count = seat_state.chips
+                    seat.is_funded = seat_state.chips > 0
+                    seat.present = seat_state.present
+            session.commit()
+
+    def _session_event(self, table_id: int, revision: int) -> dict[str, object]:
+        with self._session_factory() as session:
+            table = session.get(Table, table_id)
+            if table is None:
+                raise ValueError("table does not exist")
+            seats = sorted(table.seats, key=lambda item: item.seat_number)
+            seat_events = [
+                {
+                    "seat_number": seat.seat_number,
+                    "display_name": self._display_name(seat),
+                    "chip_count": seat.chip_count,
+                    "spectating": (seat.user_id is None and seat.actor_type != "ai") or not seat.present or seat.chip_count <= 0,
+                }
+                for seat in seats
+                if seat.seat_number <= table.seat_count
+            ]
+            rankings = []
+            if table.status == "ended":
+                rankings = sorted(seat_events, key=lambda item: (-item["chip_count"], item["seat_number"]))
+                rankings = [
+                    {
+                        "seat_number": item["seat_number"],
+                        "display_name": item["display_name"],
+                        "chip_count": item["chip_count"],
+                    }
+                    for item in rankings
+                ]
+            return {
+                "type": "session",
+                "revision": revision,
+                "status": table.status,
+                "host_user_id": table.host_user_id,
+                "seats": seat_events,
+                "final_rankings": rankings,
+            }
+
+    @staticmethod
+    def _now_from(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    def _now(self) -> datetime:
+        return self._now_from(self._clock())

@@ -15,6 +15,7 @@ class SessionSeat:
     chips: int
     joined_order: int
     present: bool = True
+    display_name: str | None = None
 
     @property
     def spectating(self) -> bool:
