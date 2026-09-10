@@ -5,15 +5,18 @@ import { ApiError } from '../../api/http';
 import type { TableView } from '../../domain/table';
 import { SetupPage } from '../setup/SetupPage';
 import { TablePage } from './TablePage';
+import { useTable } from '../../store/table';
 
 export function TableRoute() {
   const id = Number(useParams().id);
   const [view, setView] = useState<TableView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const session = useTable((state) => state.session);
   const refresh = useCallback(() => {
     getTable(id).then(setView).catch((caught) => setError(caught instanceof ApiError ? caught.message : 'Could not load the table.'));
   }, [id]);
   useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (session) refresh(); }, [session, refresh]);
   useEffect(() => { if (view?.status !== 'lobby') return; const timer = setInterval(refresh, 2000); return () => clearInterval(timer); }, [view?.status, refresh]);
   if (error) return <main><p role="alert">{error}</p></main>;
   if (!view) return <main aria-busy="true"><p>Loading table…</p></main>;
