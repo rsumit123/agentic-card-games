@@ -137,6 +137,42 @@ def leave_table(
         raise _error(exc) from exc
 
 
+@router.post("/{table_id}/sit-out")
+def sit_out(
+    table_id: int,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_user),
+    _csrf: None = Depends(require_csrf),
+):
+    return _set_sitting_out(request, table_id, user.id, sitting_out=True)
+
+
+@router.post("/{table_id}/sit-in")
+def sit_in(
+    table_id: int,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_user),
+    _csrf: None = Depends(require_csrf),
+):
+    return _set_sitting_out(request, table_id, user.id, sitting_out=False)
+
+
+def _set_sitting_out(request: Request, table_id: int, user_id: int, *, sitting_out: bool):
+    manager = request.app.state.room_manager
+    try:
+        if sitting_out:
+            manager.sit_out(table_id, user_id)
+        else:
+            manager.sit_in(table_id, user_id)
+        with request.app.state.session_factory() as session:
+            table = request.app.state.room_store._get_table(session, table_id)
+            return request.app.state.room_store._view(table)
+    except LifecycleError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except TableError as exc:
+        raise _error(exc) from exc
+
+
 @router.post("/{table_id}/end")
 def end_table(
     table_id: int,

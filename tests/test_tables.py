@@ -302,8 +302,9 @@ def test_sit_out_and_sit_in_routes_mark_the_seat(app_and_store):
             assert seat.sitting_out is True
         sat_in = client.post(f"/tables/{created.id}/sit-in", headers={"X-CSRF-Token": "csrf"})
 
-        client.cookies.set("session", cookie_for(3))
-        stranger = client.post(f"/tables/{created.id}/sit-out", headers={"X-CSRF-Token": "csrf"})
+    with TestClient(app) as stranger_client:
+        stranger_client.cookies.set("session", cookie_for(3))
+        stranger = stranger_client.post(f"/tables/{created.id}/sit-out", headers={"X-CSRF-Token": "csrf"})
 
     assert sat_out.status_code == 200
     assert sat_in.status_code == 200
@@ -311,3 +312,4 @@ def test_sit_out_and_sit_in_routes_mark_the_seat(app_and_store):
         seat = session.query(Seat).filter(Seat.table_id == created.id, Seat.seat_number == 2).one()
     assert seat.sitting_out is False
     assert stranger.status_code == 409
+    assert stranger.json()["detail"] == "you are not seated at this table"
