@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -20,7 +23,19 @@ from .routes.ws import router as websocket_router
 from .settings import Settings
 
 
+def _configure_logging() -> None:
+    """Uvicorn only wires up its own loggers, so ours would never be printed."""
+    app_logger = logging.getLogger("app")
+    app_logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
+    if not app_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s %(message)s"))
+        app_logger.addHandler(handler)
+    app_logger.propagate = False
+
+
 def create_app() -> FastAPI:
+    _configure_logging()
     settings = Settings.from_env()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     engine = build_engine(settings)

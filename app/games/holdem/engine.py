@@ -363,6 +363,26 @@ class HoldemModule:
         return {"actions": [dict(action) for action in legal_actions(state, seat_id)]}
 
 
+def showdown_hands(state: HoldemState) -> tuple[dict[str, object], ...]:
+    """Cards shown at the end of a hand, and what each of them makes.
+
+    Only a real showdown reveals anything. When everyone else folds, the
+    winner's cards stay face down, exactly as at a live table.
+    """
+    if state.street != "complete":
+        return ()
+    contenders = [player for player in state.players if not player.folded]
+    if len(contenders) < 2:
+        return ()
+    revealed = []
+    for player in contenders:
+        entry: dict[str, object] = {"seat_id": player.seat_id, "hole_cards": player.hole_cards}
+        if len(player.hole_cards) + len(state.community_cards) >= 5:
+            entry["category"] = evaluate_hand(player.hole_cards + state.community_cards).category_name
+        revealed.append(entry)
+    return tuple(revealed)
+
+
 def public_projection(state: HoldemState) -> dict[str, object]:
     return {
         "street": state.street,
@@ -378,6 +398,7 @@ def public_projection(state: HoldemState) -> dict[str, object]:
         "min_raise": state.min_raise,
         "winners": state.winners,
         "payouts": state.payouts,
+        "showdown": showdown_hands(state),
         "players": tuple(
             {
                 "seat_id": player.seat_id,

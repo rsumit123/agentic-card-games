@@ -14,6 +14,7 @@ class TierPolicy:
     latency_budget_ms: int
     fallback_chain: tuple[str, ...]
     hand_id: str | None = None
+    guidance: str = ""
 
     def lock_for_hand(self, hand_id: str) -> "TierPolicy":
         return replace(self, hand_id=hand_id)
@@ -29,18 +30,54 @@ class TierPolicy:
             "latency_budget_ms": self.latency_budget_ms,
             "fallback_chain": list(self.fallback_chain),
             "hand_id": self.hand_id,
+            "guidance": self.guidance,
         }
 
 
 _POLICIES = {
     "Easy": TierPolicy(
-        "Easy", ("openai/gpt-4o-mini",), "holdem-easy-v1", "action-v1", 0.8, 96, 1800, ("openai/gpt-4o-mini",)
+        "Easy",
+        ("openai/gpt-4o-mini",),
+        "holdem-easy-v2",
+        "action-v2",
+        0.9,
+        220,
+        7000,
+        ("openai/gpt-4o-mini",),
+        guidance=(
+            "a cheerful recreational player. You see plenty of flops and rarely make a big "
+            "bluff. Keep your bets small and fold when someone bets big into you."
+        ),
     ),
     "Medium": TierPolicy(
-        "Medium", ("openai/gpt-4o-mini", "openai/gpt-4o"), "holdem-medium-v1", "action-v1", 0.4, 128, 2200, ("openai/gpt-4o-mini",)
+        "Medium",
+        ("openai/gpt-4o-mini", "openai/gpt-4o"),
+        "holdem-medium-v2",
+        "action-v2",
+        0.5,
+        260,
+        9000,
+        ("openai/gpt-4o-mini",),
+        guidance=(
+            "a solid regular. You play a tight, aggressive game: fold weak hands before the "
+            "flop, raise your strong ones for value, and respect a big bet unless you hold "
+            "something that beats it."
+        ),
     ),
     "Hard": TierPolicy(
-        "Hard", ("openai/gpt-4o",), "holdem-hard-v1", "action-v1", 0.15, 192, 2600, ("openai/gpt-4o-mini",)
+        "Hard",
+        ("openai/gpt-4o",),
+        "holdem-hard-v2",
+        "action-v2",
+        0.25,
+        320,
+        12000,
+        ("openai/gpt-4o-mini",),
+        guidance=(
+            "a strong, thoughtful player. You size bets to the pot, read the story your "
+            "opponent's betting tells, pick your bluffs carefully, and fold when the odds "
+            "are against you."
+        ),
     ),
 }
 

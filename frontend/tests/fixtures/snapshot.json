@@ -16,6 +16,7 @@
       "min_raise": 10,
       "winners": [],
       "payouts": [],
+      "showdown": [],
       "players": [
         {
           "seat_id": 1,

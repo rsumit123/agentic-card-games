@@ -130,3 +130,24 @@ def test_showdown_builds_side_pots_and_awards_each_to_best_eligible_hand():
 
     assert dict(resolved.payouts) == {0: 100, 2: 150}
     assert sum(amount for _, amount in resolved.payouts) == 250
+
+
+def test_showdown_reveals_contenders_but_not_a_walkover():
+    from app.games.holdem.engine import apply_action, showdown_hands, start_hand
+
+    folded = start_hand({1: 1000, 2: 1000}, random_bytes=bytes(range(256)) * 4)
+    folded = apply_action(folded, folded.current_seat, {"type": "fold"})
+    assert folded.street == "complete"
+    assert showdown_hands(folded) == (), "nobody shows when everyone else folds"
+
+    contested = start_hand({1: 1000, 2: 1000}, random_bytes=bytes(range(256)) * 4)
+    while contested.street != "complete":
+        seat = contested.current_seat
+        if seat is None:
+            break
+        contested = apply_action(contested, seat, {"type": "all_in"})
+    revealed = showdown_hands(contested)
+    assert len(revealed) == 2
+    assert {entry["seat_id"] for entry in revealed} == {1, 2}
+    assert all(entry["hole_cards"] for entry in revealed)
+    assert all(isinstance(entry["category"], str) for entry in revealed)

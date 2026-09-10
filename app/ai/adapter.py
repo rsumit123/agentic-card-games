@@ -105,4 +105,5 @@ class AIAdapter:
         action = validate_ai_reply(reply, legal_schema, revision)
         if action is None:
             return ProposedAction({"type": "fold"}, revision, "invalid_reply")
-        return ProposedAction(action, revision)
+        reasoning = reply.get("reasoning") if isinstance(reply, Mapping) else None
+        return ProposedAction(action, revision, str(reasoning) if reasoning else "provider")

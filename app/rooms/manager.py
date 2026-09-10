@@ -190,7 +190,7 @@ class RoomManager:
                 },
             )
             if isinstance(result, Ack):
-                logger.info("table %s seat %s played %s", table_id, seat_id, proposed.action)
+                logger.info("table %s seat %s played %s because: %s", table_id, seat_id, proposed.action, proposed.reason)
                 self._ai_attempts.pop(key, None)
                 self._publish_state(table_id, actor)
             else:
