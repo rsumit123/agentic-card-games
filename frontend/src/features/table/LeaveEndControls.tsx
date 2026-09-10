@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { leaveTable, endTable } from '../../api/tables';
+import { leaveTable, endTable, sitOut, sitIn } from '../../api/tables';
 import { ApiError } from '../../api/http';
 import { Button } from '../../components/Button';
 
-export function LeaveEndControls({ tableId, isHost, handInProgress, onLeft }: { tableId: number; isHost: boolean; handInProgress: boolean; onLeft: () => void }) {
+export function LeaveEndControls({ tableId, isHost, handInProgress, sittingOut = false, onLeft }: { tableId: number; isHost: boolean; handInProgress: boolean; sittingOut?: boolean; onLeft: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,6 +14,11 @@ export function LeaveEndControls({ tableId, isHost, handInProgress, onLeft }: { 
     finally { setBusy(false); setConfirming(false); }
   };
   return <div className="leave-end">
+    {/* Someone always has to answer the door. Without this the alternative is
+        being timed out hand after hand. */}
+    <Button onClick={() => run(() => (sittingOut ? sitIn(tableId) : sitOut(tableId)))} busy={busy}>
+      {sittingOut ? 'Sit back in' : 'Sit out next hand'}
+    </Button>
     <Button onClick={() => run(() => leaveTable(tableId), onLeft)} busy={busy}>Leave table</Button>
     {isHost && !confirming && <Button variant="danger" disabled={handInProgress} onClick={() => setConfirming(true)}>End session</Button>}
     {isHost && confirming && <div role="group" aria-label="Confirm end">

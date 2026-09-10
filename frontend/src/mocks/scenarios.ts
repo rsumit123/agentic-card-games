@@ -93,6 +93,10 @@ export const SCENARIOS: Record<string, { table: Partial<TableView>; snapshot: Sn
       street: 'turn', community_cards: [c(11, D), c(2, D), c(10, H), c(5, C)], pot: 1480, current_seat: 1,
       names: NAMES3, dealer_seat: 1, small_blind_seat: 2, big_blind_seat: 3,
       current_bet: 700, min_raise: 700,
+      pots: [
+        { amount: 1140, eligible_seats: [1, 2, 3] },
+        { amount: 340, eligible_seats: [1, 3] },
+      ],
       players: [
         player({ seat_id: 1, stack: 700, contribution: 400, street_contribution: 0 }),
         player({ seat_id: 2, stack: 0, all_in: true, contribution: 380, street_contribution: 380, has_acted: true }),
@@ -109,9 +113,9 @@ export const SCENARIOS: Record<string, { table: Partial<TableView>; snapshot: Sn
       current_seat: null, names: NAMES3, dealer_seat: 1, small_blind_seat: 2, big_blind_seat: 3,
       winners: [1], payouts: [[1, 1480]],
       showdown: [
-        { seat_id: 1, hole_cards: [c(14, S), c(13, S)], category: 'pair', best_five: [] },
-        { seat_id: 2, hole_cards: [c(9, C), c(9, H)], category: 'pair', best_five: [] },
-        { seat_id: 3, hole_cards: [c(11, S), c(4, C)], category: 'pair', best_five: [] },
+        { seat_id: 1, hole_cards: [c(14, S), c(13, S)], category: 'pair', best_five: [c(14, S), c(14, H), c(13, S), c(11, D), c(10, H)] },
+        { seat_id: 2, hole_cards: [c(9, C), c(9, H)], category: 'pair', best_five: [c(9, C), c(9, H), c(14, H), c(11, D), c(10, H)] },
+        { seat_id: 3, hole_cards: [c(11, S), c(4, C)], category: 'pair', best_five: [c(11, S), c(11, D), c(14, H), c(10, H), c(5, C)] },
       ],
       players: [
         player({ seat_id: 1, stack: 1480, contribution: 500 }),

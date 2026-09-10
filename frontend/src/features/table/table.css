@@ -191,11 +191,11 @@
 .chip-flight-award[data-arrived='true'] { scale: 1.18; opacity: 0; transition-duration: 1000ms; transition-delay: 0ms, 0ms, 620ms, 620ms; }
 
 /* Pot layers, when a short stack has split the middle into more than one. */
-.pot-split { display: grid; gap: 4px; }
-.pot-layer { display: grid; line-height: 1.15; }
-.pot-layer-name { font-size: 10px; letter-spacing: 0.07em; color: var(--mist-dim); text-transform: uppercase; }
-.pot-layer b { font-family: var(--font-display); font-size: 21px; color: var(--ivory); }
-.pot-layer small { font-size: 10px; color: var(--mist-dim); }
+.pot-split { display: flex; gap: 14px; align-items: flex-start; justify-content: center; white-space: nowrap; }
+.pot-layer { display: grid; line-height: 1.1; }
+.pot-layer-name { font-size: 9px; letter-spacing: 0.07em; color: var(--mist-dim); text-transform: uppercase; }
+.pot-layer b { font-family: var(--font-display); font-size: 20px; color: var(--ivory); }
+.pot-layer small { font-size: 9px; color: var(--mist-dim); }
 
 /* Said once, loudly, when you take it down. */
 .felt-shout {
@@ -499,3 +499,5 @@
   .hand-result-headline { font-size: 19px; }
   .table-footer { margin: 12px auto 24px; }
 }
+
+.leaving { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--mist-dim); }

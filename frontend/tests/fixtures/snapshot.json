@@ -41,7 +41,23 @@
       "names": {
         "1": "Ana",
         "2": "Rivers (AI)"
-      }
+      },
+      "hand_number": 1,
+      "pots": [
+        {
+          "amount": 10,
+          "eligible_seats": [
+            1,
+            2
+          ]
+        },
+        {
+          "amount": 5,
+          "eligible_seats": [
+            2
+          ]
+        }
+      ]
     },
     "hole_cards": [
       {
