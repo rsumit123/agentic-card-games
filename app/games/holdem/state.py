@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Any, Mapping
 
 from ..cards import Card
 
@@ -36,6 +36,9 @@ class HoldemState:
     hand_number: int = 1
     winners: tuple[int, ...] = ()
     payouts: tuple[tuple[int, int], ...] = ()
+    # Every action taken this hand, in order. Public information: it is only
+    # what everyone at the table watched happen.
+    action_log: tuple[Mapping[str, Any], ...] = ()
 
     @property
     def pot(self) -> int:

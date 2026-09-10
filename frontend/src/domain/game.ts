@@ -5,6 +5,9 @@ export interface PublicPlayer {
   seat_id: number; stack: number; folded: boolean; all_in: boolean;
   contribution: number; street_contribution: number; has_acted: boolean;
 }
+/** One action somebody took this hand. Public: everyone watched it happen. */
+export interface TableAction { seat_id: number; street: Street; type: string; amount: number | null }
+
 /** Cards turned face up at the end of a contested hand. */
 export interface ShowdownHand { seat_id: number; hole_cards: Card[]; category?: string }
 
@@ -27,6 +30,7 @@ export interface PublicState {
   small_blind: number; big_blind: number; current_bet: number; min_raise: number;
   winners: number[]; payouts: [number, number][]; players: PublicPlayer[];
   showdown: ShowdownHand[];
+  actions: TableAction[];
   names: Record<number, string | null>;
 }
 export type LegalAction =

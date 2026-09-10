@@ -29,3 +29,20 @@ def test_system_prompt_tells_the_model_how_to_play_and_how_to_answer():
     assert "raising TO" in prompt
     assert '"reasoning"' in prompt
     assert "Your style:" in prompt
+
+
+def test_the_model_is_told_how_the_betting_has_gone():
+    from app.games.holdem.engine import apply_action
+
+    state = start_hand({1: 1000, 2: 1000}, small_blind=25, big_blind=50, random_bytes=bytes(range(256)) * 4)
+    state = apply_action(state, state.current_seat, {"type": "call"})
+    state = apply_action(state, state.current_seat, {"type": "check"})
+    state = apply_action(state, state.current_seat, {"type": "bet", "amount": 100})
+    seat = state.current_seat
+
+    described = describe_table(RoomActor(1, state).snapshot_for(seat), list(HoldemModule().ai_schema(state, seat)["actions"]))
+
+    assert "How the betting has gone this hand:" in described
+    assert "preflop:" in described and "flop:" in described
+    assert "you called 50" in described
+    assert "seat 2 bet 100" in described

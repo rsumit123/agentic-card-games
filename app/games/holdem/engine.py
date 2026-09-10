@@ -205,6 +205,7 @@ def apply_action(state: HoldemState, seat_id: int, action: HoldemAction | Mappin
     player = state.player(seat_id)
     if player.folded or player.all_in:
         raise InvalidAction("seat cannot act")
+    street_before = state.street
     try:
         action = normalize_action(action)
     except ValueError as exc:
@@ -269,6 +270,11 @@ def apply_action(state: HoldemState, seat_id: int, action: HoldemAction | Mappin
         raise InvalidAction("unknown action")
 
     state = _replace_player(state, updated)
+    state = replace(
+        state,
+        action_log=state.action_log
+        + ({"seat_id": seat_id, "street": street_before, "type": action.type, "amount": target},),
+    )
     if action.type == "fold":
         return _finish_fold(state)
     if aggressive:
@@ -399,6 +405,7 @@ def public_projection(state: HoldemState) -> dict[str, object]:
         "winners": state.winners,
         "payouts": state.payouts,
         "showdown": showdown_hands(state),
+        "actions": state.action_log,
         "players": tuple(
             {
                 "seat_id": player.seat_id,

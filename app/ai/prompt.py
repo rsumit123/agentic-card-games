@@ -41,6 +41,42 @@ def describe_action(action: Mapping[str, Any]) -> str:
     return str(kind)
 
 
+VERBS = {
+    "fold": "folded",
+    "check": "checked",
+    "call": "called",
+    "bet": "bet",
+    "raise": "raised to",
+    "all_in": "moved all in for",
+}
+
+
+def describe_history(actions, seat_id) -> str:
+    """The betting so far, street by street.
+
+    Without this the model sees only the chips currently in front of each
+    player, so a seat that raised every street looks the same as one that
+    called along, and there is no story to read.
+    """
+    by_street: dict[str, list[str]] = {}
+    order: list[str] = []
+    for entry in actions or ():
+        street = str(entry.get("street"))
+        if street not in by_street:
+            by_street[street] = []
+            order.append(street)
+        who = "you" if entry.get("seat_id") == seat_id else f"seat {entry.get('seat_id')}"
+        verb = VERBS.get(str(entry.get("type")), str(entry.get("type")))
+        amount = entry.get("amount")
+        by_street[street].append(f"{who} {verb} {amount}" if amount is not None else f"{who} {verb}")
+    if not order:
+        return ""
+    lines = ["How the betting has gone this hand:"]
+    for street in order:
+        lines.append(f"  {street}: " + ", ".join(by_street[street]))
+    return "\n".join(lines)
+
+
 def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[str, Any]]) -> str:
     public = projection.get("public", {})
     seat_id = projection.get("seat_id")
@@ -95,6 +131,9 @@ def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[st
     rank = projection.get("hand_rank")
     if rank:
         lines.append(f"Your current best five-card hand: {rank.get('category')}.")
+    history = describe_history(public.get("actions"), seat_id)
+    if history:
+        lines.append(history)
     lines.append("Legal actions: " + "; ".join(describe_action(action) for action in legal_actions) + ".")
     return "\n".join(lines)
 
@@ -113,6 +152,9 @@ How to play well:
 - A cheap call is not the same as an expensive one. When the amount to call is small next
   to the pot, folding a playable hand is usually a mistake. Before the flop, posting or
   completing a blind is not the same as facing a raise. Folding every hand loses slowly.
+- Read the betting. A player who has raised every street usually has a real hand; one who
+  keeps checking and calling usually does not. Use that, and remember what you represented
+  with your own earlier bets.
 - Heads-up, hands play much better than they would at a full table. When nobody has raised
   and you are on the button or in the small blind, most reasonable hands are worth playing."""
 
