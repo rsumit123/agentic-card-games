@@ -134,11 +134,16 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
       {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
       {leaving.length > 0 && <p className="leaving" role="status">{leaving.join(' and ')} {leaving.length > 1 ? 'are' : 'is'} leaving after this hand.</p>}
       {sittingOutNames.length > 0 && <p className="leaving" role="status">{sittingOutNames.join(' and ')} sitting out.</p>}
+      {/* The controls come and go; the space they sit in does not. Letting the
+          felt grow into it made the whole table jump every time the turn
+          passed. */}
+      <div className="action-slot">
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
         pot={projection.public.pot} bigBlind={projection.public.big_blind} waitingFor={waitingFor}
         deadline={myTurn ? <DeadlineRing deadline={deadline} /> : null}
         lastAction={lastAction}
         error={lastError && lastError.code !== 'stale_revision' ? errorText(lastError) : null} />
+      </div>
 
       <Sheet open={sheet === 'table'} title="Table options" onClose={() => setSheet(null)}>
         <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />

@@ -14,14 +14,17 @@ const PIPS: Record<number, [number, number][]> = {
   14: [[50, 70]],
 };
 
-type Common = { size?: 'sm' | 'md' | 'lg'; enter?: boolean; highlight?: boolean };
+type Common = { size?: 'sm' | 'md' | 'lg'; enter?: boolean; highlight?: boolean; delayMs?: number };
 type Props = (Common & { card: Card; back?: false }) | (Common & { back: true; card?: undefined });
 
 export function PlayingCard(props: Props) {
   const size = props.size ?? 'md';
   const extra = `${props.enter ? ' card-enter' : ''}${props.highlight ? ' card-win' : ''}`;
+  // Cards dealt together are staggered, so a flop reads as three cards landing
+  // rather than one block of three.
+  const style = props.delayMs ? { animationDelay: `${props.delayMs}ms` } : undefined;
   if (props.back) {
-    return <svg className={`card card-${size} card-back${extra}`} viewBox="0 0 100 140" role="img" aria-label="Face-down card">
+    return <svg className={`card card-${size} card-back${extra}`} style={style} viewBox="0 0 100 140" role="img" aria-label="Face-down card">
       <rect x="1" y="1" width="98" height="138" rx="6" fill="var(--ivory)" stroke="var(--ink)" strokeOpacity="0.2" />
       <rect x="7" y="7" width="86" height="126" rx="4" fill="var(--felt-deep)" />
       <path d="M50 40c-14 10-14 40 0 60c14-20 14-50 0-60z" fill="none" stroke="var(--brass)" strokeWidth="1.5" />
@@ -32,7 +35,7 @@ export function PlayingCard(props: Props) {
   const glyph = GLYPH[card.suit];
   const index = rankIndex(card.rank);
   const court = card.rank >= 11 && card.rank <= 13;
-  return <svg className={`card card-${size}${extra}`} viewBox="0 0 100 140" role="img" aria-label={cardLabel(card)} data-color={red ? 'red' : 'black'}>
+  return <svg className={`card card-${size}${extra}`} style={style} viewBox="0 0 100 140" role="img" aria-label={cardLabel(card)} data-color={red ? 'red' : 'black'}>
     <rect x="1" y="1" width="98" height="138" rx="6" fill="var(--ivory)" stroke="var(--ink)" strokeOpacity="0.2" />
     <g className="card-ink">
       <text x="8" y="24" fontSize="23" fontWeight="600">{index}</text><text x="8" y="43" fontSize="19">{glyph}</text>

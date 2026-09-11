@@ -33,7 +33,10 @@ describe('ActionBar', () => {
     expect(sizes).toHaveLength(4);
     const amounts = sizes.map((button) => button.textContent);
     expect(new Set(amounts).size).toBe(4);
+    // Before the flop a raise is measured in blinds, and the smallest of them
+    // is the minimum raise itself.
     expect(amounts[0]).toMatch(/Min20/);
+    expect(amounts[1]).toMatch(/BB/);
   });
 
   it('starts at the minimum raise and uses it when nothing is chosen', async () => {

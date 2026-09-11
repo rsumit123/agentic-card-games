@@ -86,7 +86,7 @@
 .seat-opponent .seat-main { display: grid; justify-items: center; gap: 4px; }
 .seat-opponent .seat-info { justify-items: center; text-align: center; }
 .seat-opponent .seat-name { font-size: 11px; max-width: 96px; }
-.seat-opponent .seat-stack { font-size: 15px; }
+.seat-opponent .seat-stack { font-size: 16px; color: var(--ivory); }
 
 /* Your own chair reads top to bottom, the way you look at it: the cards you
    are holding, then who you are and what you have left. */
@@ -189,8 +189,8 @@
 .seat-thinking i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes seat-think { 0%, 100% { opacity: 0.28; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 
-.seat-timer { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.seat-timer-track { flex: 1; height: 5px; border-radius: 3px; background: rgba(243, 236, 218, 0.16); overflow: hidden; }
+.seat-timer { display: flex; align-items: center; gap: 7px; margin-top: 5px; opacity: 0.85; }
+.seat-timer-track { flex: 1; height: 3px; border-radius: 2px; background: rgba(243, 236, 218, 0.14); overflow: hidden; }
 .seat-timer-bar {
   display: block;
   height: 100%;
@@ -199,7 +199,7 @@
   transform-origin: left center;
   transition: transform 250ms linear;
 }
-.seat-timer-count { font-size: 11px; color: var(--mist); min-width: 24px; text-align: right; }
+.seat-timer-count { font-size: 10px; color: var(--mist-dim); min-width: 22px; text-align: right; }
 .seat-timer-late .seat-timer-bar { background: var(--ember); }
 .seat-timer-late .seat-timer-count { color: var(--ember-text); }
 
@@ -237,14 +237,7 @@
 .pot-layer small { font-size: 9px; color: var(--mist-dim); }
 
 /* Said once, loudly, when you take it down. */
-.felt-shout {
-  margin: 6px 0 0;
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: 26px;
-  color: var(--brass);
-  animation: shout 420ms cubic-bezier(.2,.8,.3,1) both;
-}
+
 @keyframes shout { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: none; } }
 
 /* ---- Table chrome ------------------------------------------------------- */
@@ -258,7 +251,18 @@
   display: flex;
   flex-direction: column;
 }
-.table-page > .action-bar { align-self: center; width: 100%; }
+.table-page > .action-slot {
+  flex: none;
+  align-self: center;
+  width: 100%;
+  /* Reserved whether or not there is anything to put in it. */
+  min-height: var(--action-slot, 0px);
+  display: grid;
+  align-content: end;
+}
+/* The bar's own auto margins would otherwise shrink it to the width of its
+   widest row inside the slot. */
+.table-page > .action-slot > .action-bar { width: 100%; }
 /* The table grows into whatever the action area does not use, so the screen
    never has a band of nothing in the middle of it. */
 .table-page > .felt-wrap { flex: 1; display: grid; place-items: center; }
@@ -438,7 +442,17 @@
   background: none;
   border: 0;
 }
-.sizer-value { font-size: 21px; font-weight: 600; min-width: 3.5ch; color: var(--ivory); }
+.sizer-value {
+  font-size: 20px;
+  font-weight: 600;
+  min-width: 4.5ch;
+  padding: 5px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface-sunk);
+  color: var(--ivory);
+  text-align: center;
+}
 
 /* The UA default thumb is far under the 44px touch floor. */
 .sizer-range { width: 100%; height: 34px; background: transparent; accent-color: var(--copper); -webkit-appearance: none; appearance: none; }
@@ -591,6 +605,8 @@ p.hand-result-next { color: var(--brass); }
      that overflows: it pins it to the start. Size it explicitly and hang it
      off both edges with symmetric negative margins instead. */
   .table-page > .felt-wrap { justify-items: start; }
+  /* Every state gets the same floor, so the felt sits in one place all hand. */
+  .table-page { --action-slot: 244px; }
   .felt {
     --felt-width: min(118vw, 560px);
     width: var(--felt-width);
@@ -620,8 +636,8 @@ p.hand-result-next { color: var(--brass); }
   .seat-hero .seat-main { gap: 3px; }
   .seat-hero .seat-name { font-size: 11px; }
   .seat-hero .seat-stack { font-size: 17px; }
-  .seat-opponent { width: 100px; padding: 5px; }
-  .seat-opponent .seat-cards .card-sm { width: 36px; }
+  .seat-opponent { width: 104px; padding: 5px 6px; }
+  .seat-opponent .seat-cards .card-sm { width: 32px; }
   .seat-hero .seat-cards .card-lg { width: 50px; }
   .seat-main { gap: 7px; }
   .seat-name { font-size: 11px; max-width: 98px; }
@@ -653,7 +669,8 @@ p.hand-result-next { color: var(--brass); }
   position: absolute;
   z-index: 5;
   left: 50%;
-  top: 73%;
+  /* Just under the board. At 73% it landed on the hero's own cards. */
+  top: 68%;
   transform: translate(-50%, -50%);
   padding: 4px 14px;
   border-radius: 999px;
@@ -736,7 +753,8 @@ p.hand-result-next { color: var(--brass); }
 .rankings { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 4px; font-size: 14px; color: var(--mist); }
 
 /* ---- Reactions ---------------------------------------------------------- */
-.reactions { position: absolute; right: 4px; bottom: 6px; z-index: 15; display: grid; justify-items: end; gap: 8px; }
+.reactions { position: absolute; left: 80%; top: 79%; transform: translateX(-50%); z-index: 15; display: grid; justify-items: end; gap: 8px; }
+.reactions .icon-button { background: rgba(9, 17, 13, 0.62); backdrop-filter: blur(6px); }
 .reactions-tray {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

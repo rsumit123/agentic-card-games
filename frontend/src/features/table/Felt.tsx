@@ -47,7 +47,6 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
   addMarker(pub.small_blind_seat, 'SB');
   addMarker(pub.big_blind_seat, 'BB');
 
-  const heroWon = complete && winners.has(me);
   const potHome = complete && pub.winners.length > 0
     ? (positions[pub.winners[0]] ?? HERO_SLOT)
     : null;
@@ -58,9 +57,15 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
       <StreetLabel street={pub.street} handNumber={pub.hand_number ?? 0} />
       <Pots pub={pub} />
       <div className="community" role="group" aria-label="Community cards">
-        {board.cards.map((card, index) => <PlayingCard key={`${card.rank}${card.suit}${index}`} card={card} size="md"
-          enter={index >= board.cards.length - board.fresh}
-          highlight={winningCards.has(`${card.rank}${card.suit}`)} />)}
+        {board.cards.map((card, index) => {
+          const fresh = index >= board.cards.length - board.fresh;
+          return <PlayingCard key={`${card.rank}${card.suit}${index}`} card={card} size="md"
+            enter={fresh}
+            // A flop arrives in one message. Dealing it left to right is the
+            // difference between cards being dealt and cards appearing.
+            delayMs={fresh ? (index - (board.cards.length - board.fresh)) * 90 : 0}
+            highlight={winningCards.has(`${card.rank}${card.suit}`)} />;
+        })}
       </div>
       {pub.players.map((player) => <SeatBadge key={player.seat_id} player={player} name={pub.names[player.seat_id] ?? null} isMe={player.seat_id === me} active={pub.current_seat === player.seat_id}
         thinking={thinkingSeats.includes(player.seat_id)}
@@ -74,9 +79,10 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
         side={positions[player.seat_id].y < 50 ? 'top' : 'bottom'} style={{ left: `${positions[player.seat_id].x}%`, top: `${positions[player.seat_id].y}%` }} />)}
       {flights.map((flight) => <ChipFlight key={flight.id} flight={flight} />)}
       {potHome && <ChipFlight key={`pot-${pub.hand_number ?? 0}`} flight={{ id: -1, from: POT_ANCHOR, amount: pub.payouts.reduce((total, [, amount]) => total + amount, 0) }} to={potHome} kind="award" />}
+      {/* On the rail, where a chip rack would be, rather than floating in the
+          dark beside the table. */}
+      {onReact && <Reactions onReact={onReact} />}
     </div>
-    {onReact && <Reactions onReact={onReact} />}
-    {heroWon && <p className="felt-shout" role="presentation">You win</p>}
   </section>;
 }
 

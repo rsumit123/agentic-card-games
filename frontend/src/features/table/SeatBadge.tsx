@@ -31,6 +31,8 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
   // A fold used to make two cards vanish between frames. They now go where
   // folded cards go: face down, towards the middle.
   const mucking = useMuck(player.folded);
+  // Chips land on a stack; they do not teleport onto it.
+  const stack = useCountTo(player.stack);
   const className = [
     'seat-badge',
     isMe ? 'seat-hero' : 'seat-opponent',
@@ -63,7 +65,7 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
             {!isMe && <span className="seat-avatar" aria-hidden="true">{isAi ? '🤖' : label.slice(0, 1).toUpperCase()}</span>}
             <span className="seat-name-text">{label}</span>
           </span>
-          <span className="seat-stack tabular">{player.stack.toLocaleString()}</span>
+          <span className="seat-stack tabular">{stack.toLocaleString()}</span>
           {state && <span className="seat-state">{state}</span>}
         </div>
       </div>
@@ -96,6 +98,35 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
   );
 }
 
+
+/** Count a stack up to a pot it has just won, over about a third of a second.
+ *
+ *  Only upwards, and only for a jump worth watching: chips leaving for the pot
+ *  are already drawn as chips crossing the felt. */
+function useCountTo(target: number) {
+  const [shown, setShown] = useState(target);
+  const from = useRef(target);
+  useEffect(() => {
+    const start = from.current;
+    from.current = target;
+    const gain = target - start;
+    if (gain <= 0 || gain < 25 || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
+      setShown(target);
+      return;
+    }
+    const began = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const through = Math.min(1, (now - began) / 380);
+      // Fast at first, settling onto the number.
+      setShown(Math.round(start + gain * (1 - (1 - through) ** 3)));
+      if (through < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+  return shown;
+}
 
 /** True for the third of a second after a seat folds. */
 function useMuck(folded: boolean) {

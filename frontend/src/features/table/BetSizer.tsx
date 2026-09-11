@@ -18,24 +18,31 @@ export function BetSizer({ sizing, pot, bigBlind, value, onChange }: {
   const clamp = (amount: number) => Math.min(max, Math.max(min, Number.isFinite(amount) ? Math.round(amount) : min));
 
   const presets = useMemo(() => {
-    // Sizes in the order a player wants them, clamped into what is actually
-    // legal. A fraction that clamps all the way down is the minimum raise and
-    // says so, rather than claiming to be a quarter of the pot.
-    const candidates = [
-      { label: '¼ Pot', amount: clamp(pot / 4) },
-      { label: '½ Pot', amount: clamp(pot / 2) },
-      { label: '¾ Pot', amount: clamp((pot * 3) / 4) },
-      { label: 'Pot', amount: clamp(pot) },
-      { label: '1½ Pot', amount: clamp(pot * 1.5) },
-      { label: '2× Pot', amount: clamp(pot * 2) },
-      // Before the flop the pot is two blinds, so every fraction of it lands on
-      // the minimum. Multiples of the minimum are what that raise is measured
-      // in, and they keep the row four wide.
-      { label: '2× min', amount: clamp(min * 2) },
-      { label: '3× min', amount: clamp(min * 3) },
-      { label: '4× min', amount: clamp(min * 4) },
-    ];
+    // Before the flop the pot is just the blinds, and a raise is measured in
+    // blinds rather than in fractions of it. After the flop the pot is the
+    // thing worth sizing against.
+    // Three big blinds is about as large as a pot gets before anyone has
+    // actually bet into it.
+    const preflopish = pot <= bigBlind * 3;
+    const candidates = preflopish
+      ? [
+        { label: '2× BB', amount: clamp(bigBlind * 2) },
+        { label: '2½× BB', amount: clamp(bigBlind * 2.5) },
+        { label: '3× BB', amount: clamp(bigBlind * 3) },
+        { label: '4× BB', amount: clamp(bigBlind * 4) },
+        { label: '5× BB', amount: clamp(bigBlind * 5) },
+      ]
+      : [
+        { label: '½ Pot', amount: clamp(pot / 2) },
+        { label: '¾ Pot', amount: clamp((pot * 3) / 4) },
+        { label: 'Pot', amount: clamp(pot) },
+        { label: '1½ Pot', amount: clamp(pot * 1.5) },
+        { label: '2× Pot', amount: clamp(pot * 2) },
+      ];
 
+    // Two sizes that land on the same chips are one button, and a size that
+    // clamps to the floor is the minimum raise rather than a fraction of
+    // anything.
     const seen = new Set<number>();
     const sizes: { label: string; amount: number }[] = [];
     for (const preset of candidates) {
@@ -46,7 +53,7 @@ export function BetSizer({ sizing, pot, bigBlind, value, onChange }: {
     }
     return [...sizes, { label: 'All-in', amount: max }];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pot, min, max]);
+  }, [pot, bigBlind, min, max]);
 
   // A new street resets the bounds; a value left over from the last one would
   // silently become a different bet.
