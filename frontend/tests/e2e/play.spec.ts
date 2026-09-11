@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('create, seat a house player, start, act', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Create a table/ }).click();
+  // Creating a table is a screen of its own now.
+  await page.getByRole('link', { name: /Create a table/ }).click();
   await page.getByRole('button', { name: 'Create table' }).click();
   await page.getByRole('button', { name: 'Play with an LLM' }).click();
   await page.getByRole('menuitem', { name: /Easy/ }).click();
@@ -17,7 +18,8 @@ test('create, seat a house player, start, act', async ({ page }) => {
 
 test('sizing a raise offers pot-fraction shortcuts', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Create a table/ }).click();
+  // Creating a table is a screen of its own now.
+  await page.getByRole('link', { name: /Create a table/ }).click();
   await page.getByRole('button', { name: 'Create table' }).click();
   await page.getByRole('button', { name: 'Play with an LLM' }).click();
   await page.getByRole('menuitem', { name: /Easy/ }).click();

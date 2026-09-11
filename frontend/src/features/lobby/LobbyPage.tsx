@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../../api/auth';
 import { useSession } from '../../store/session';
-import { CreateTableForm } from './CreateTableForm';
 import { JoinTableForm } from './JoinTableForm';
 import { HowItWorks } from './HowItWorks';
 import { PENDING_INVITE } from './JoinRoute';
 import './lobby.css';
 
-type Panel = 'join' | 'create' | 'how' | null;
+type Panel = 'join' | 'how' | null;
 
 export function LobbyPage() {
   const user = useSession((state) => state.user);
@@ -44,16 +43,11 @@ export function LobbyPage() {
         <p className="lobby-tagline">Play poker with people and with language models.</p>
       </header>
 
-      {/* What the table can be, before the question of how to get to one. */}
-      <ul className="lobby-modes" aria-hidden="true">
-        <li><span className="mode-chip">♣</span>Real hands</li>
-        <li><span className="mode-chip">🤖</span>Play with LLMs</li>
-        <li><span className="mode-chip">⚡</span>Fast and fun</li>
-      </ul>
-
-      {/* The room, out of focus: chips under the lamp. */}
-      <div className="lobby-band" aria-hidden="true">
-        {Array.from({ length: 9 }, (_, index) => <i key={index} />)}
+      {/* The room, out of focus, with the promise on top of it: the band was a
+          blur with nothing to say, taking the best space on the screen. */}
+      <div className="lobby-band">
+        <span aria-hidden="true">{Array.from({ length: 9 }, (_, index) => <i key={index} />)}</span>
+        <p>People and language models.<br />Same table.</p>
       </div>
 
       {/* Three ways in, in the order a person wants them: join a game, start
@@ -63,26 +57,25 @@ export function LobbyPage() {
           <span className="choice-icon" aria-hidden="true">▶</span>
           <span><b>Play now</b><small>Join a table with a room code</small></span>
         </button>
-        <button type="button" className="choice" aria-expanded={panel === 'create'} onClick={() => toggle('create')}>
+        <Link to="/create" className="choice">
           <span className="choice-icon" aria-hidden="true">＋</span>
           <span><b>Create a table</b><small>Invite friends or house players</small></span>
-        </button>
-        <button type="button" className="choice" aria-expanded={panel === 'how'} onClick={() => toggle('how')}>
-          <span className="choice-icon" aria-hidden="true">?</span>
-          <span><b>How it works</b><small>The rules, and what beats what</small></span>
-        </button>
+        </Link>
       </nav>
 
       <section className="lobby-panel">
         {panel === 'join' && <JoinTableForm />}
-        {panel === 'create' && <CreateTableForm />}
         {panel === 'how' && <HowItWorks />}
       </section>
 
-      <p className="lobby-motto">"Same game. Different minds."</p>
+      {/* Reading the rules is not one of the two things to do here. */}
+      <button type="button" className="btn-link lobby-how" aria-expanded={panel === 'how'} onClick={() => toggle('how')}>
+        How it works
+      </button>
 
       <footer className="lobby-foot">
-        <p>Signed in as {user?.display_name}</p>
+        <span className="lobby-you" aria-hidden="true">{(user?.display_name ?? '?').slice(0, 1).toUpperCase()}</span>
+        <p>{user?.display_name}</p>
         <Link to="/history">Your record</Link>
         <button type="button" className="btn-link" onClick={signOut} disabled={signingOut}>Sign out</button>
       </footer>

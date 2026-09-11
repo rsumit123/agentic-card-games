@@ -35,9 +35,15 @@ export function SetupPage({ view, refresh, onStarted, notice }: { view: TableVie
   return (
     <main className="setup">
       <header className="setup-header">
-        <h1>The Common Table</h1>
-        <p>A private table for {view.seat_count}. Blinds {view.small_blind}/{view.big_blind}. Everyone starts with {view.starting_chips.toLocaleString()} chips.</p>
-        {code ? <><p>Room code <strong className="code">{code}</strong></p><InviteButton code={code} /></> : <p className="muted">Ask the host for the code.</p>}
+        <h1>Waiting room</h1>
+        {code
+          ? <div className="room-code">
+            <span>Room code</span>
+            <strong className="code">{code}</strong>
+            <InviteButton code={code} />
+          </div>
+          : <p className="muted">Ask the host for the code.</p>}
+        <p className="setup-shape">{view.seat_count} seats · {view.starting_chips.toLocaleString()} chips · {view.small_blind}/{view.big_blind} blinds</p>
       </header>
       {notice && <RecoveryNotice message={notice} />}
       <SeatGrid seats={view.seats} isHost={isHost} busySeat={busySeat} tiers={tiers} onAddAi={addAi} />

@@ -22,7 +22,7 @@ describe('auth gate', () => {
   it('shows the lobby when signed in', async () => {
     server.use(http.get('http://localhost:8000/auth/me', () => HttpResponse.json({ user: { id: 1, google_subject: 'x', email: 'a@b', display_name: 'Ana' }, csrf_token: 'tok' })));
     at('/');
-    expect(await screen.findByRole('button', { name: /create a table/i })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /create a table/i })).toBeInTheDocument();
   });
   it('shows an error state when the server is unreachable', async () => {
     server.use(http.get('http://localhost:8000/auth/me', () => HttpResponse.error()));

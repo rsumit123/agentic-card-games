@@ -5,6 +5,7 @@ import { ApiError } from './api/http';
 import { useSession } from './store/session';
 import { LandingPage } from './features/landing/LandingPage';
 import { LobbyPage } from './features/lobby/LobbyPage';
+import { CreateTablePage } from './features/lobby/CreateTablePage';
 import { TableRoute } from './features/table/TableRoute';
 import { HistoryPage } from './features/history/HistoryPage';
 import { JoinRoute, PENDING_INVITE } from './features/lobby/JoinRoute';
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LobbyPage />} />
+      <Route path="/create" element={<CreateTablePage />} />
       <Route path="/tables/:id" element={<TableRoute />} />
       <Route path="/history" element={<HistoryPage />} />
       <Route path="/join/:code" element={<JoinRoute />} />
