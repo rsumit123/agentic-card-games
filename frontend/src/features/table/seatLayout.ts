@@ -2,19 +2,23 @@ export interface SeatSlot { x: number; y: number }
 
 /** Where the opponents sit, in order clockwise from the seat to your left.
  *
- *  Portrait is the constraining case. The felt is ~322px wide on a 412px
- *  phone, so two badges side by side plus a gutter have to fit inside that.
- *  The slots keep every opponent above the community-card band and inside the
- *  rail; the badge itself is capped in CSS so the two can never disagree. */
+ *  Portrait is the constraining case. The felt is now wider than the phone -
+ *  the rail runs off both edges - so opponents can use the flanks instead of
+ *  queueing along the top rail. They stay clear of the screen edge, because a
+ *  badge is drawn inside the felt but has to be read inside the viewport.
+ *
+ *  The flanks sit just above the middle rather than level with it: the board
+ *  is five cards wide and owns the middle band on a 390px screen, so a seat
+ *  level with it would land on the cards. */
 const SLOTS: Record<number, SeatSlot[]> = {
-  1: [{ x: 50, y: 13 }],
-  2: [{ x: 18, y: 17 }, { x: 82, y: 17 }],
-  3: [{ x: 15, y: 20 }, { x: 50, y: 10 }, { x: 85, y: 20 }],
+  1: [{ x: 50, y: 14 }],
+  2: [{ x: 22, y: 20 }, { x: 78, y: 20 }],
+  3: [{ x: 22, y: 31 }, { x: 50, y: 12 }, { x: 78, y: 31 }],
 };
 
 /** Your own seat is always bottom centre, the way every portrait poker app
  *  does it, so your cards and the action bar sit in the same thumb arc. */
-export const HERO_SLOT: SeatSlot = { x: 50, y: 80 };
+export const HERO_SLOT: SeatSlot = { x: 50, y: 83 };
 
 /**
  * Lay out the table from the viewer's chair.
