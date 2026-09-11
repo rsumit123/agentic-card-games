@@ -15,6 +15,11 @@ class TierPolicy:
     fallback_chain: tuple[str, ...]
     hand_id: str | None = None
     guidance: str = ""
+    # A tier ladder, not a switch: the easy seat has no memory of earlier hands
+    # at all, the medium seat sees the numbers, and only the hard seat is told
+    # what they mean.
+    sees_reads: bool = True
+    interprets_reads: bool = True
 
     def lock_for_hand(self, hand_id: str) -> "TierPolicy":
         return replace(self, hand_id=hand_id)
@@ -31,6 +36,8 @@ class TierPolicy:
             "fallback_chain": list(self.fallback_chain),
             "hand_id": self.hand_id,
             "guidance": self.guidance,
+            "sees_reads": self.sees_reads,
+            "interprets_reads": self.interprets_reads,
         }
 
 
@@ -48,6 +55,8 @@ _POLICIES = {
             "a cheerful recreational player. You see plenty of flops and rarely make a big "
             "bluff. Keep your bets small and fold when someone bets big into you."
         ),
+        sees_reads=False,
+        interprets_reads=False,
     ),
     "Medium": TierPolicy(
         "Medium",
@@ -63,6 +72,7 @@ _POLICIES = {
             "flop, raise your strong ones for value, and respect a big bet unless you hold "
             "something that beats it."
         ),
+        interprets_reads=False,
     ),
     "Hard": TierPolicy(
         "Hard",

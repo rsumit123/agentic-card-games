@@ -77,7 +77,66 @@ def describe_history(actions, seat_id) -> str:
     return "\n".join(lines)
 
 
-def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[str, Any]]) -> str:
+MIN_READ_HANDS = 5
+AGGRESSIVE_READ_PCT = 60
+PASSIVE_READ_PCT = 25
+
+AGGRESSIVE_READING = (
+    "Nobody is dealt good cards that often. This player is betting with weak hands too, so "
+    "their bets say much less than a normal player's. Call them down with any pair or a good "
+    "draw, and do not fold just because they bet again."
+)
+PASSIVE_READING = (
+    "This player almost never bets. When they do bet, take it seriously and fold marginal hands."
+)
+
+
+def describe_reads(reads: Mapping[Any, Mapping[str, Any]] | None, *, interpret: bool) -> str:
+    """What the other seats have shown over the session, in plain words.
+
+    A handful of hands says nothing, so a seat is left out entirely until there
+    is enough of it to be worth reading. The interpretation is held back for the
+    hardest tier: the numbers alone are already a real edge.
+    """
+    lines: list[str] = []
+    for seat_id, read in sorted((reads or {}).items(), key=lambda item: str(item[0])):
+        hands = int(read.get("hands", 0))
+        if hands < MIN_READ_HANDS:
+            continue
+        aggression = int(read.get("aggression_pct", 0))
+        vpip_hands = round(hands * int(read.get("vpip_pct", 0)) / 100)
+        sentences = [
+            f"Seat {seat_id}, read from {hands} hands: they put money in before the flop in "
+            f"{vpip_hands} of them and they bet or raise on about {aggression}% of their turns."
+        ]
+        taken = int(read.get("won_without_showdown", 0))
+        if taken:
+            sentences.append(f"They have taken {taken} pots without ever showing a hand.")
+        sentences.append(
+            f"They fold to a bet about {int(read.get('fold_to_bet_pct', 0))}% of the time."
+        )
+        showed_weak = int(read.get("showed_weak", 0))
+        if showed_weak:
+            sentences.append(
+                f"They have shown down no better than a pair after betting {showed_weak} times."
+            )
+        if interpret:
+            if aggression >= AGGRESSIVE_READ_PCT:
+                sentences.append(AGGRESSIVE_READING)
+            elif aggression <= PASSIVE_READ_PCT:
+                sentences.append(PASSIVE_READING)
+        lines.append(" ".join(sentences))
+    if not lines:
+        return ""
+    return "\n".join(["What you have seen from these players so far:"] + lines)
+
+
+def describe_table(
+    projection: Mapping[str, Any],
+    legal_actions: list[Mapping[str, Any]],
+    *,
+    policy: Any = None,
+) -> str:
     public = projection.get("public", {})
     seat_id = projection.get("seat_id")
     me = next((player for player in public.get("players", ()) if player.get("seat_id") == seat_id), {})
@@ -134,6 +193,13 @@ def describe_table(projection: Mapping[str, Any], legal_actions: list[Mapping[st
     history = describe_history(public.get("actions"), seat_id)
     if history:
         lines.append(history)
+    if policy is None or getattr(policy, "sees_reads", True):
+        reads = describe_reads(
+            projection.get("opponent_reads"),
+            interpret=policy is None or bool(getattr(policy, "interprets_reads", True)),
+        )
+        if reads:
+            lines.append(reads)
     lines.append("Legal actions: " + "; ".join(describe_action(action) for action in legal_actions) + ".")
     return "\n".join(lines)
 
@@ -143,7 +209,9 @@ strength, the board, the pot odds and what your opponent's betting says, then pi
 one of the legal actions.
 
 How to play well:
-- Fold weak hands instead of calling or raising, especially when facing a large bet.
+- Fold weak hands instead of calling or raising when a normal, selective opponent puts in a
+  large bet. That read is about who is betting: an opponent who bets in most hands is telling
+  you nothing, and against them a pair or a good draw is usually worth a call.
 - Raising needs a reason: a strong made hand, a strong draw, or a real chance to fold out
   something better. Do not raise on every street by reflex.
 - A bet or raise amount is the total you are raising TO for this street, not an increment.
@@ -152,9 +220,12 @@ How to play well:
 - A cheap call is not the same as an expensive one. When the amount to call is small next
   to the pot, folding a playable hand is usually a mistake. Before the flop, posting or
   completing a blind is not the same as facing a raise. Folding every hand loses slowly.
-- Read the betting. A player who has raised every street usually has a real hand; one who
-  keeps checking and calling usually does not. Use that, and remember what you represented
-  with your own earlier bets.
+- Read the betting, and read the bettor. Against someone who picks their spots, raising every
+  street usually means a real hand; against someone who bets hand after hand it means nothing,
+  because they cannot be holding one every time.
+  Folding every hand to a player who keeps betting is itself a losing strategy: it hands them
+  the blinds forever and they will keep exploiting it. One who checks and calls usually has
+  little. Remember what your own earlier bets represented.
 - Heads-up, hands play much better than they would at a full table. When nobody has raised
   and you are on the button or in the small blind, most reasonable hands are worth playing."""
 

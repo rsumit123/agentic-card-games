@@ -17,7 +17,7 @@ class OpenRouterProvider:
             "model": policy.model_pool[0],
             "messages": [
                 {"role": "system", "content": system_prompt(policy)},
-                {"role": "user", "content": describe_table(projection, list(legal_schema.get("actions", ())))},
+                {"role": "user", "content": describe_table(projection, list(legal_schema.get("actions", ())), policy=policy)},
             ],
             "temperature": policy.temperature,
             "max_tokens": policy.max_tokens,

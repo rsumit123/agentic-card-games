@@ -214,8 +214,12 @@ class RoomManager:
         self._ai_inflight.add(key)
         self._ai_attempts[key] = self._ai_attempts.get(key, 0) + 1
         try:
+            # The reads go to the AI's view of the table only. They are never
+            # part of the projection a human's websocket receives.
+            ai_view = dict(actor.snapshot_for(seat_id))
+            ai_view["opponent_reads"] = self.opponent_reads(table_id, seat_id)
             proposed = await adapter.decide(
-                actor.snapshot_for(seat_id),
+                ai_view,
                 actor.module.ai_schema(actor.state, seat_id),
                 actor.revision,
                 actor.deadline,

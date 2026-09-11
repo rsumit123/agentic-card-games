@@ -116,3 +116,29 @@ def test_a_seat_with_no_finished_hands_is_left_out():
     manager.register(1, actor)
 
     assert manager.opponent_reads(1, 0) == {}
+
+
+def test_the_ai_is_handed_the_reads_and_the_websocket_never_is():
+    import asyncio
+
+    actor = RoomActor(1, start_hand({0: 1000, 1: 1000}, random_bytes=RANDOM_BYTES), action_timeout=timedelta(seconds=30))
+    manager = RoomManager()
+    manager.register(1, actor)
+    _hands(manager, 1, actor, _always_bet, count=6)
+
+    seen = {}
+
+    class RecordingAdapter:
+        async def decide(self, projection, schema, revision, deadline):
+            seen.update(projection)
+            return None
+
+    manager.register_ai(1, actor.state.current_seat, RecordingAdapter())
+    queue = manager.connect(1, actor.state.current_seat)
+    asyncio.run(manager.run_once(1))
+
+    assert seen["opponent_reads"], "the AI must be able to remember earlier hands"
+    assert "opponent_reads" not in actor.snapshot_for(0)
+    manager._publish_state(1, actor)
+    event = queue.get_nowait()
+    assert "opponent_reads" not in event["payload"], "a human must never be shown a read"
