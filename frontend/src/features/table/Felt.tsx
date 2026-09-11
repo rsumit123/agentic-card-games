@@ -5,15 +5,19 @@ import { SeatBadge } from './SeatBadge';
 import { seatPositions, HERO_SLOT } from './seatLayout';
 import { ChipFlight, type Flight } from './ChipFlight';
 import { Pots } from './Pots';
+import { Reactions } from './Reactions';
 import { useRunout } from './useRunout';
 import { StreetLabel } from './StreetLabel';
 import './table.css';
 
-export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [] }: {
+export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [], aiSeats = [], reactions = {}, onReact }: {
   projection: SeatProjection;
   deadline?: string | null;
   seatCount?: number;
   thinkingSeats?: number[];
+  aiSeats?: number[];
+  reactions?: Record<number, string>;
+  onReact?: (emoji: string) => void;
 }) {
   const { public: pub, seat_id: me, hole_cards } = projection;
   const positions = seatPositions(pub.players.map((player) => player.seat_id), me, seatCount);
@@ -48,6 +52,7 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
 
   return <section className="felt-wrap" aria-label="Table">
     <div className="felt" data-street={pub.street}>
+      <span className="felt-mark" aria-hidden="true">♠</span>
       <StreetLabel street={pub.street} handNumber={pub.hand_number ?? 0} />
       <Pots pub={pub} />
       <div className="community" role="group" aria-label="Community cards">
@@ -57,6 +62,8 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
       </div>
       {pub.players.map((player) => <SeatBadge key={player.seat_id} player={player} name={pub.names[player.seat_id] ?? null} isMe={player.seat_id === me} active={pub.current_seat === player.seat_id}
         thinking={thinkingSeats.includes(player.seat_id)}
+        isAi={aiSeats.includes(player.seat_id)}
+        reaction={reactions[player.seat_id] ?? null}
         holeCards={player.seat_id === me ? hole_cards : null}
         revealed={revealedBySeat.get(player.seat_id) ?? null}
         won={winners.has(player.seat_id)}
@@ -65,6 +72,7 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
       {flights.map((flight) => <ChipFlight key={flight.id} flight={flight} />)}
       {potHome && <ChipFlight key={`pot-${pub.hand_number ?? 0}`} flight={{ id: -1, from: POT_ANCHOR, amount: pub.payouts.reduce((total, [, amount]) => total + amount, 0) }} to={potHome} kind="award" />}
     </div>
+    {onReact && <Reactions onReact={onReact} />}
     {heroWon && <p className="felt-shout" role="presentation">You win</p>}
   </section>;
 }

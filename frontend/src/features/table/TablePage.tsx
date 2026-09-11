@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { TableView } from '../../domain/table';
 import { me, loginUrl } from '../../api/auth';
-import { getTable } from '../../api/tables';
+import { getTable, nextHand } from '../../api/tables';
 import { ApiError } from '../../api/http';
 import { useTable } from '../../store/table';
 import { useTableSocket } from './useTableSocket';
@@ -16,9 +16,10 @@ import { LeaveEndControls } from './LeaveEndControls';
 import { SessionEnded } from './SessionEnded';
 import { DeadlineRing } from './DeadlineRing';
 import { ActionFeed } from './ActionFeed';
-import { NextHand } from './NextHand';
 import { useTableSound } from './useTableSound';
-import { SoundToggle } from './SoundToggle';
+import { Sheet, IconButton } from './TableMenus';
+import { SettingsSheet } from './SettingsSheet';
+import { phraseFor } from './actionPhrase';
 
 /** Engine and database text is written for a log, not for a player. */
 const ERROR_TEXT: Record<string, string> = {
@@ -50,8 +51,9 @@ function HandshakeHelp({ tableId, reconnect }: { tableId: number; reconnect: () 
 }
 
 export function TablePage({ view, onLeft = () => window.location.assign('/') }: { view: TableView; onLeft?: () => void }) {
-  const { send, reconnect } = useTableSocket(view.id);
-  const { projection, deadline, revealDeadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, droppedAction, setDroppedAction, canAct, session } = useTable();
+  const { send, react, reconnect } = useTableSocket(view.id);
+  const [sheet, setSheet] = useState<'settings' | 'table' | null>(null);
+  const { projection, deadline, revealDeadline, connection, pending, lastError, needsResync, recoveryNotice, dismissNotice, droppedAction, setDroppedAction, reactions, expireReaction, canAct, session } = useTable();
   const myUserId = useSession((state) => state.user?.id ?? null);
   const hostId = session?.host_user_id ?? view.host_user_id;
   const hostSeat = view.seats.find((seat) => seat.user_id === hostId)?.seat_number ?? null;
@@ -77,16 +79,34 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
   // A house player deciding takes a couple of seconds. Without a cue that is
   // indistinguishable from a table that has stopped.
   const thinkingSeats = turnSeat !== null && seatsByNumber.get(turnSeat)?.actor_type === 'ai' ? [turnSeat] : [];
+  const aiSeats = view.seats.filter((seat) => seat.actor_type === 'ai').map((seat) => seat.seat_number);
+  // Only the newest reaction per seat, so a burst does not stack up.
+  const reactionBySeat: Record<number, string> = {};
+  for (const entry of reactions) reactionBySeat[entry.seat] = entry.emoji;
   const myTurn = status === 'your-turn';
+  const actions = projection?.public.actions ?? [];
+  const last = actions[actions.length - 1];
+  const lastAction = last && projection
+    ? phraseFor(last, last.seat_id === projection.seat_id ? 'You' : projection.public.names[last.seat_id] ?? `Seat ${last.seat_id}`)
+    : null;
+  // A reaction is a two-second bubble, not a message that stays on the table.
+  useEffect(() => {
+    if (reactions.length === 0) return;
+    const timers = reactions.map((entry) => setTimeout(() => expireReaction(entry.id), 2200));
+    return () => timers.forEach(clearTimeout);
+  }, [reactions, expireReaction]);
+
   useTableSound({ myTurn, street: projection?.public.street ?? null, handComplete: projection?.public.street === 'complete', won: !!projection && projection.public.winners.includes(projection.seat_id) });
   return <main className="table-page">
     <header className="table-header">
       <h1>The Common Table</h1>
-      <p className="table-blinds">{view.small_blind}/{view.big_blind}</p>
-      <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
-      <SoundToggle />
+      <p className="table-blinds tabular">{view.small_blind}/{view.big_blind}</p>
       <ConnectionPill status={connection} />
+      <IconButton label="Settings" onClick={() => setSheet('settings')}>⚙</IconButton>
+      <IconButton label="Table menu" onClick={() => setSheet('table')}>≡</IconButton>
     </header>
+
+    <SettingsSheet open={sheet === 'settings'} onClose={() => setSheet(null)} />
 
     {connection === 'handshake_failed' && <HandshakeHelp tableId={view.id} reconnect={reconnect} />}
     {connection === 'unauthorized' && <div role="alert" className="recovery">
@@ -105,25 +125,29 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
     </div>}
     {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : <>
       {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
-      <Felt projection={projection} deadline={deadline} seatCount={view.seat_count} thinkingSeats={thinkingSeats} />
-      <HandResult pub={projection.public} mySeat={projection.seat_id} />
-      <NextHand deadline={revealDeadline} />
-      <ActionFeed pub={projection.public} mySeat={projection.seat_id} />
+      <Felt projection={projection} deadline={deadline} seatCount={view.seat_count} thinkingSeats={thinkingSeats}
+        aiSeats={aiSeats} reactions={reactionBySeat} onReact={react} />
+      <HandResult pub={projection.public} mySeat={projection.seat_id}
+        holeCards={projection.hole_cards} handRank={projection.hand_rank}
+        revealDeadline={revealDeadline}
+        onNextHand={myUserId === hostId ? () => { void nextHand(view.id).catch(() => {}); } : null} />
       {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
       {leaving.length > 0 && <p className="leaving" role="status">{leaving.join(' and ')} {leaving.length > 1 ? 'are' : 'is'} leaving after this hand.</p>}
       {sittingOutNames.length > 0 && <p className="leaving" role="status">{sittingOutNames.join(' and ')} sitting out.</p>}
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
         pot={projection.public.pot} bigBlind={projection.public.big_blind} waitingFor={waitingFor}
         deadline={myTurn ? <DeadlineRing deadline={deadline} /> : null}
+        lastAction={lastAction}
         error={lastError && lastError.code !== 'stale_revision' ? errorText(lastError) : null} />
-      {/* Leaving and ending are rare, so they sit past the action bar rather than
-          crowding the header above the table. */}
-      <details className="table-footer">
-        <summary>Table options</summary>
+
+      <Sheet open={sheet === 'table'} title="Table" onClose={() => setSheet(null)}>
         <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
+        {leaving.length > 0 && <p className="leaving">{leaving.join(' and ')} {leaving.length > 1 ? 'are' : 'is'} leaving after this hand.</p>}
+        {sittingOutNames.length > 0 && <p className="leaving">{sittingOutNames.join(' and ')} sitting out.</p>}
+        <ActionFeed pub={projection.public} mySeat={projection.seat_id} limit={8} />
         <LeaveEndControls tableId={view.id} isHost={myUserId === hostId} handInProgress={projection.public.street !== 'complete'}
           sittingOut={!!session?.seats.find((seat) => seat.seat_number === projection.seat_id)?.sitting_out} onLeft={onLeft} />
-      </details>
+      </Sheet>
     </>}
   </main>;
 }

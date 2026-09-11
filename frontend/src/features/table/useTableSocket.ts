@@ -35,5 +35,5 @@ export function useTableSocket(tableId: number) {
     useTable.getState().setPending({ key, action });
     ref.current.send(action, revision, projection.seat_id);
   };
-  return { send, reconnect: () => ref.current?.retry() };
+  return { send, react: (emoji: string) => ref.current?.react(emoji), reconnect: () => ref.current?.retry() };
 }

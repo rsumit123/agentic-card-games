@@ -26,6 +26,8 @@
   --ember: #C4553D;
   --ember-text: #E5947C;
   --moss: #4FA37A;
+  /* The 'stay in the hand' fill: dark enough for ivory text at AA. */
+  --moss-deep: #1E5A3C;
 
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;

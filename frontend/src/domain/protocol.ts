@@ -10,4 +10,5 @@ export type ServerEvent =
   | { type: 'ack'; revision: number; idempotency_key: string; payload: SeatProjection; deadline: string | null; reveal_deadline?: string | null }
   | { type: 'state'; revision: number; payload: SeatProjection; deadline: string | null; reveal_deadline?: string | null }
   | SessionEvent
+  | { type: 'reaction'; seat_number: number; emoji: string }
   | { type: 'error'; code: ErrorCode; message: string; revision: number; idempotency_key: string | null };

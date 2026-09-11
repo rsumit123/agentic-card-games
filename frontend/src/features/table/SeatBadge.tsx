@@ -9,12 +9,14 @@ import { useCountdown } from './useCountdown';
  *  Your own chair is wide, with cards big enough to read at arm's length.
  *  Opponents are a narrow vertical token, because two of them have to sit
  *  side by side on a felt that is only about 320px wide in portrait. */
-export function SeatBadge({ player, name, isMe, active, thinking, holeCards, revealed, markers, deadline, side, won, style }: {
+export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction, holeCards, revealed, markers, deadline, side, won, style }: {
   player: PublicPlayer;
   name: string | null;
   isMe: boolean;
   active: boolean;
   thinking?: boolean;
+  isAi?: boolean;
+  reaction?: string | null;
   holeCards: Card[] | null;
   revealed?: Card[] | null;
   markers: string[];
@@ -52,11 +54,16 @@ export function SeatBadge({ player, name, isMe, active, thinking, holeCards, rev
             : !player.folded && <><PlayingCard back size={isMe ? 'lg' : 'sm'} /><PlayingCard back size={isMe ? 'lg' : 'sm'} /></>}
         </div>
         <div className="seat-info">
-          <span className="seat-name">{label}</span>
+          <span className="seat-name">
+            {!isMe && <span className="seat-avatar" aria-hidden="true">{isAi ? '🤖' : label.slice(0, 1).toUpperCase()}</span>}
+            {label}
+          </span>
           <span className="seat-stack tabular">{player.stack.toLocaleString()}</span>
           {state && <span className="seat-state">{state}</span>}
         </div>
       </div>
+
+      {reaction && <span className="seat-reaction" aria-hidden="true">{reaction}</span>}
 
       {markers.length > 0 && (
         <span className="seat-markers">{markers.map((marker) => <span key={marker} className="marker">{marker}</span>)}</span>

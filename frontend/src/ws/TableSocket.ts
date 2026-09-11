@@ -44,6 +44,11 @@ export class TableSocket {
     if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(command));
   }
 
+  /** A reaction is cosmetic: no revision, no deadline, nothing to replay. */
+  react(emoji: string) {
+    if (this.ws?.readyState === 1) this.ws.send(JSON.stringify({ type: 'reaction', emoji }));
+  }
+
   private open() {
     const Impl = this.opts.WebSocketImpl ?? WebSocket;
     const base = this.opts.baseUrl ?? config.wsBaseUrl;

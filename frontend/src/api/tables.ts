@@ -12,3 +12,4 @@ export const leaveTable = (id: number) => request<TableView>(`/tables/${id}/leav
 export const endTable = (id: number) => request<TableView>(`/tables/${id}/end`, { method: 'POST' });
 export const sitOut = (id: number) => request<TableView>(`/tables/${id}/sit-out`, { method: 'POST' });
 export const sitIn = (id: number) => request<TableView>(`/tables/${id}/sit-in`, { method: 'POST' });
+export const nextHand = (id: number) => request<TableView>(`/tables/${id}/next-hand`, { method: 'POST' });
