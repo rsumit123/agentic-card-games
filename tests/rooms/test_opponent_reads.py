@@ -142,3 +142,22 @@ def test_the_ai_is_handed_the_reads_and_the_websocket_never_is():
     manager._publish_state(1, actor)
     event = queue.get_nowait()
     assert "opponent_reads" not in event["payload"], "a human must never be shown a read"
+
+
+def test_completing_an_unraised_blind_is_not_facing_a_bet():
+    """A small blind folding to nothing but the big blind is not folding to pressure."""
+    from app.games.holdem.engine import apply_action
+    from app.rooms.reads import update_from_hand, summarize
+
+    state = start_hand({1: 1000, 2: 1000}, random_bytes=RANDOM_BYTES)
+    # Heads-up the small blind acts first preflop, and folds to nothing but the
+    # big blind.
+    folder = state.current_seat
+    state = apply_action(state, folder, {"type": "fold"})
+
+    reads: dict[int, dict[str, int]] = {}
+    update_from_hand(reads, state)
+    other = next(seat for seat in (1, 2) if seat != folder)
+    summary = summarize(reads, for_seat_id=other)
+    assert folder in summary, "the folding seat should have a read"
+    assert summary[folder]["fold_to_bet_pct"] == 0

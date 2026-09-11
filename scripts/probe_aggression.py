@@ -225,9 +225,23 @@ def _report(rows: list[dict[str, object]]) -> None:
             f"{row['folded_to_bet']:>7} {row['fold_rate_facing_a_bet']:>7} {row['net_chips']:>10}"
         )
     by_name = {row["opponent"]: row for row in rows}
-    maniac_fold = by_name["maniac"]["fold_rate_facing_a_bet"]
-    honest_fold = by_name["honest"]["fold_rate_facing_a_bet"]
+    maniac = by_name["maniac"]
+    honest = by_name["honest"]
     print()
+    # A fold rate over no decisions is not a number. Saying so beats reporting
+    # a comparison that cannot be made.
+    if maniac["faced_bet"] == 0:
+        print("The maniac never got a bet in. Nothing to measure; check the matchup setup.")
+        return
+    if honest["faced_bet"] == 0:
+        print(
+            f"Folds to the maniac {maniac['fold_rate_facing_a_bet']}% of the time. "
+            "The honest player never bet, so there is no control to compare against: "
+            "run the same tier against Easy, which gets no reads, for the baseline."
+        )
+        return
+    maniac_fold = maniac["fold_rate_facing_a_bet"]
+    honest_fold = honest["fold_rate_facing_a_bet"]
     print(f"Folds to the maniac {maniac_fold}% of the time, to the honest player {honest_fold}%.")
     if maniac_fold < honest_fold:
         print("The read is conditional: it gives the constant bettor less credit than the selective one.")

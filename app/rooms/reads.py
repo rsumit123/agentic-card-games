@@ -70,7 +70,10 @@ def update_from_hand(reads: dict[int, dict[str, int]], state) -> dict[int, dict[
         to_call = current_bet - contributed.get(seat_id, 0)
 
         counters["decisions"] += 1
-        if to_call > 0:
+        # Completing an unraised blind is not facing a bet. Counting it made
+        # every small blind look like a player who folds to pressure.
+        real_bet = to_call > 0 and not (street == "preflop" and current_bet <= state.big_blind)
+        if real_bet:
             counters["faced_bet"] += 1
             if kind == "fold":
                 counters["folded_to_bet"] += 1
