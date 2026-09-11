@@ -15,15 +15,28 @@
   border-radius: 50% / 45%;
   background:
     var(--felt-grain),
-    radial-gradient(ellipse 70% 60% at 50% 42%, #2A7049 0%, var(--felt) 46%, var(--felt-deep) 88%);
+    radial-gradient(ellipse 62% 52% at 50% 40%, #2E7A4F 0%, #246643 34%, var(--felt) 62%, var(--felt-deep) 92%);
   background-blend-mode: soft-light, normal;
   /* A real rail is a hand's width of wood. The thin ring read as a border. */
   box-shadow:
     0 0 0 20px var(--walnut),
     0 0 0 23px var(--walnut-light),
     0 0 0 24px rgba(0, 0, 0, 0.45),
-    inset 0 0 60px rgba(0, 0, 0, 0.3),
+    /* where the cloth meets the rail */
+    inset 0 0 18px rgba(0, 0, 0, 0.45),
+    inset 0 0 70px rgba(0, 0, 0, 0.28),
+    inset 0 8px 22px rgba(0, 0, 0, 0.22),
     0 26px 60px rgba(0, 0, 0, 0.6);
+}
+/* The rail is turned wood: lit along the top, dark underneath. */
+.felt::before {
+  content: '';
+  position: absolute;
+  inset: -23px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(170deg, rgba(243, 236, 218, 0.16), transparent 26%, transparent 72%, rgba(0, 0, 0, 0.35));
+  mask: radial-gradient(closest-side, transparent calc(100% - 23px), #000 calc(100% - 23px));
 }
 
 .pot {
@@ -58,11 +71,12 @@
   z-index: 3;
   transform: translate(-50%, -50%);
   padding: 7px 10px;
-  border-radius: 14px;
-  background: rgba(12, 22, 17, 0.9);
-  border: 2px solid transparent;
+  border-radius: 16px;
+  background: rgba(9, 17, 13, 0.62);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(243, 236, 218, 0.1);
   color: var(--ivory);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
 }
 .seat-opponent {
   width: 104px;
@@ -71,14 +85,14 @@
 }
 .seat-opponent .seat-main { display: grid; justify-items: center; gap: 4px; }
 .seat-opponent .seat-info { justify-items: center; text-align: center; }
-.seat-opponent .seat-name { font-size: 12px; max-width: 92px; }
+.seat-opponent .seat-name { font-size: 11px; max-width: 96px; }
 .seat-opponent .seat-stack { font-size: 15px; }
 
 /* Your own chair reads top to bottom, the way you look at it: the cards you
    are holding, then who you are and what you have left. */
 .seat-hero {
-  border-color: rgba(201, 162, 74, 0.55);
-  background: rgba(10, 18, 14, 0.92);
+  border-color: rgba(201, 162, 74, 0.45);
+  background: rgba(9, 17, 13, 0.66);
 }
 .seat-hero .seat-main { display: grid; justify-items: center; gap: 6px; }
 .seat-hero .seat-cards { gap: 5px; }
@@ -88,7 +102,7 @@
 
 .seat-active {
   border-color: var(--copper);
-  box-shadow: 0 0 0 4px rgba(184, 118, 58, 0.22), 0 6px 18px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 3px rgba(184, 118, 58, 0.26), 0 10px 22px rgba(0, 0, 0, 0.4);
 }
 /* Dimming the whole badge took the word "folded" down to 2.3:1, so the state
    label keeps its own opacity. */
@@ -102,13 +116,22 @@
 .seat-main { display: flex; align-items: center; gap: 9px; }
 .seat-cards { display: flex; gap: 3px; }
 .seat-info { display: grid; gap: 1px; justify-items: start; }
+/* "GPT-4o ..." is a worse answer than "GPT-4o mini" a point smaller. The name
+   wraps to a second line before it is ever cut. */
 .seat-name {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.15;
   color: var(--mist);
-  white-space: nowrap;
-  max-width: 128px;
+  max-width: 130px;
+  overflow-wrap: anywhere;
+}
+.seat-name-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .seat-stack { font-size: 17px; font-weight: 600; line-height: 1.15; }
 .seat-state { font-size: 11px; color: var(--mist-dim); }
@@ -386,7 +409,7 @@
 
 /* ---- Bet sizing --------------------------------------------------------- */
 /* Always on screen: raising is one tap on a size, then one tap on Raise. */
-.sizer { display: grid; gap: 8px; margin-bottom: 10px; }
+.sizer { display: grid; gap: 6px; margin-bottom: 8px; }
 .sizer-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .sizer-preset {
   display: grid;
@@ -404,33 +427,34 @@
 .sizer-preset b { font-size: 14px; color: var(--ivory); }
 .sizer-preset[aria-pressed='true'] { border-color: var(--copper); background: rgba(184, 118, 58, 0.2); color: var(--ivory); }
 
+/* The amount is the thing being chosen; the slider is how you nudge it. It
+   was the other way round - a heavy sunk box with a big orange handle. */
 .sizer-slide {
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 12px;
-  padding: 4px 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface-sunk);
+  padding: 0 6px 0 2px;
+  background: none;
+  border: 0;
 }
-.sizer-value { font-size: 18px; font-weight: 600; min-width: 3.5ch; }
+.sizer-value { font-size: 21px; font-weight: 600; min-width: 3.5ch; color: var(--ivory); }
 
 /* The UA default thumb is far under the 44px touch floor. */
-.sizer-range { width: 100%; height: 44px; background: transparent; accent-color: var(--copper); -webkit-appearance: none; appearance: none; }
-.sizer-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: rgba(243, 236, 218, 0.18); }
-.sizer-range::-moz-range-track { height: 6px; border-radius: 3px; background: rgba(243, 236, 218, 0.18); }
+.sizer-range { width: 100%; height: 34px; background: transparent; accent-color: var(--copper); -webkit-appearance: none; appearance: none; }
+.sizer-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(243, 236, 218, 0.16); }
+.sizer-range::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(243, 236, 218, 0.16); }
 .sizer-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 28px; height: 28px;
-  margin-top: -11px;
+  width: 20px; height: 20px;
+  margin-top: -8px;
   border-radius: 50%;
   border: 2px solid var(--ivory);
   background: var(--copper);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 .sizer-range::-moz-range-thumb {
-  width: 28px; height: 28px;
+  width: 20px; height: 20px;
   border-radius: 50%;
   border: 2px solid var(--ivory);
   background: var(--copper);
@@ -555,7 +579,7 @@ p.hand-result-next { color: var(--brass); }
   /* Connected is the boring case; on a phone it is a dot. */
   .pill[data-ok='true'] .pill-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .pill[data-ok='true'] { padding: 0; width: 14px; min-width: 14px; }
-  .icon-button { min-width: 40px; min-height: 40px; font-size: 16px; }
+  .icon-button { min-width: 38px; min-height: 38px; font-size: 15px; }
   /* Who the host is matters between hands, not during one. It lives in the
      table options on a phone rather than squeezing the title. */
   .table-header .session-line { display: none; }
@@ -590,7 +614,7 @@ p.hand-result-next { color: var(--brass); }
   .community { gap: 3px; }
   /* The board is the reference the hero cards are read against, not the other
      way round: keep it compact so the felt still reads as a table. */
-  .community .card-md { width: 46px; }
+  .community .card-md { width: 44px; }
   .seat-badge { padding: 5px 7px; border-radius: 12px; }
   .seat-hero { padding: 5px 8px 4px; }
   .seat-hero .seat-main { gap: 3px; }
@@ -598,15 +622,15 @@ p.hand-result-next { color: var(--brass); }
   .seat-hero .seat-stack { font-size: 17px; }
   .seat-opponent { width: 100px; padding: 5px; }
   .seat-opponent .seat-cards .card-sm { width: 36px; }
-  .seat-hero .seat-cards .card-lg { width: 54px; }
+  .seat-hero .seat-cards .card-lg { width: 50px; }
   .seat-main { gap: 7px; }
-  .seat-name { font-size: 12px; max-width: 96px; }
+  .seat-name { font-size: 11px; max-width: 98px; }
   .seat-stack { font-size: 15px; }
-  .action-bar { margin-top: 8px; padding: 10px 10px calc(12px + env(safe-area-inset-bottom)); }
-  .action-status { font-size: 16px; margin-bottom: 6px; }
+  .action-bar { margin-top: 4px; padding: 8px 10px calc(12px + env(safe-area-inset-bottom)); }
+  .action-status { font-size: 16px; margin-bottom: 4px; }
   .action-buttons { gap: 8px; }
   .action-buttons .btn { min-height: 52px; font-size: 15px; padding: 0 8px; }
-  .sizer { gap: 6px; margin-bottom: 8px; }
+  .sizer { gap: 4px; margin-bottom: 6px; }
   .sizer-presets { gap: 5px; }
   .sizer-preset { min-height: 40px; }
   .sizer-preset b { font-size: 13px; }
@@ -648,21 +672,23 @@ p.hand-result-next { color: var(--brass); }
 }
 
 /* ---- Header icons and sheets -------------------------------------------- */
+/* Settings and the menu are things you reach for twice a session. They were
+   as loud as the cards. */
 .icon-button {
   flex: none;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 40px;
+  min-height: 40px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--surface-2);
-  color: var(--mist);
-  font-size: 17px;
+  background: rgba(243, 236, 218, 0.04);
+  color: var(--mist-dim);
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
 }
-.icon-button:hover { color: var(--ivory); }
+.icon-button:hover { color: var(--ivory); background: rgba(243, 236, 218, 0.09); }
 
 .sheet-scrim {
   position: fixed;
@@ -746,16 +772,32 @@ p.hand-result-next { color: var(--brass); }
 }
 
 /* ---- Felt mark and avatars ---------------------------------------------- */
+/* The house mark sits in the band above the pot, where nothing is dealt. It
+   used to be centred under the board, so all anyone saw was the tips of a
+   spade sticking out from behind the cards. */
 .felt-mark {
   position: absolute;
   left: 50%;
-  top: 57%;
+  top: 29%;
   transform: translate(-50%, -50%);
-  font-size: 86px;
+  font-size: 58px;
   line-height: 1;
-  color: rgba(243, 236, 218, 0.05);
+  color: rgba(243, 236, 218, 0.07);
+  text-shadow: 0 1px 0 rgba(243, 236, 218, 0.05);
   pointer-events: none;
   user-select: none;
+}
+
+/* The betting line a real table has printed on the cloth. It gives the empty
+   middle something to be, without competing with a card. */
+.felt::after {
+  content: '';
+  position: absolute;
+  inset: 11% 7%;
+  border-radius: 50%;
+  border: 1px solid rgba(243, 236, 218, 0.055);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.14);
+  pointer-events: none;
 }
 .seat-avatar {
   display: inline-grid;

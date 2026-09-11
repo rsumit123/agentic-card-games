@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ActionBar } from '../../src/features/table/ActionBar';
 import type { LegalAction } from '../../src/domain/game';
@@ -23,6 +23,17 @@ describe('ActionBar', () => {
     await userEvent.click(screen.getByRole('button', { name: /Pot 40/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Raise' }));
     expect(onAct).toHaveBeenCalledWith({ type: 'raise', amount: 40 });
+  });
+
+  it('offers four distinct sizes even before the flop, when every pot fraction is the minimum', () => {
+    // Pot 15 against a minimum raise of 20: a quarter, a half and a whole pot
+    // all clamp to 20, which used to leave a row of one button.
+    render(<ActionBar legal={legal} canAct onAct={() => {}} status="your-turn" pot={15} bigBlind={10} />);
+    const sizes = within(screen.getByRole('group', { name: 'Bet size shortcuts' })).getAllByRole('button');
+    expect(sizes).toHaveLength(4);
+    const amounts = sizes.map((button) => button.textContent);
+    expect(new Set(amounts).size).toBe(4);
+    expect(amounts[0]).toMatch(/Min20/);
   });
 
   it('starts at the minimum raise and uses it when nothing is chosen', async () => {

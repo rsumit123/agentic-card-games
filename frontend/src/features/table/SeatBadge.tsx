@@ -61,7 +61,7 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
         <div className="seat-info">
           <span className="seat-name">
             {!isMe && <span className="seat-avatar" aria-hidden="true">{isAi ? '🤖' : label.slice(0, 1).toUpperCase()}</span>}
-            {label}
+            <span className="seat-name-text">{label}</span>
           </span>
           <span className="seat-stack tabular">{player.stack.toLocaleString()}</span>
           {state && <span className="seat-state">{state}</span>}

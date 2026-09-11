@@ -18,19 +18,33 @@ export function BetSizer({ sizing, pot, bigBlind, value, onChange }: {
   const clamp = (amount: number) => Math.min(max, Math.max(min, Number.isFinite(amount) ? Math.round(amount) : min));
 
   const presets = useMemo(() => {
+    // Sizes in the order a player wants them, clamped into what is actually
+    // legal. A fraction that clamps all the way down is the minimum raise and
+    // says so, rather than claiming to be a quarter of the pot.
     const candidates = [
       { label: '¼ Pot', amount: clamp(pot / 4) },
       { label: '½ Pot', amount: clamp(pot / 2) },
+      { label: '¾ Pot', amount: clamp((pot * 3) / 4) },
       { label: 'Pot', amount: clamp(pot) },
-      { label: 'All-in', amount: max },
+      { label: '1½ Pot', amount: clamp(pot * 1.5) },
+      { label: '2× Pot', amount: clamp(pot * 2) },
+      // Before the flop the pot is two blinds, so every fraction of it lands on
+      // the minimum. Multiples of the minimum are what that raise is measured
+      // in, and they keep the row four wide.
+      { label: '2× min', amount: clamp(min * 2) },
+      { label: '3× min', amount: clamp(min * 3) },
+      { label: '4× min', amount: clamp(min * 4) },
     ];
-    // Two sizes that land on the same chips are one preset.
+
     const seen = new Set<number>();
-    return candidates.filter((preset) => {
-      if (seen.has(preset.amount)) return false;
+    const sizes: { label: string; amount: number }[] = [];
+    for (const preset of candidates) {
+      if (seen.has(preset.amount) || preset.amount === max) continue;
       seen.add(preset.amount);
-      return true;
-    });
+      sizes.push(preset.amount === min ? { label: 'Min', amount: min } : preset);
+      if (sizes.length === 3) break;
+    }
+    return [...sizes, { label: 'All-in', amount: max }];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pot, min, max]);
 
