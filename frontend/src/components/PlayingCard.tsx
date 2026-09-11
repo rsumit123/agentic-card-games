@@ -14,12 +14,12 @@ const PIPS: Record<number, [number, number][]> = {
   14: [[50, 70]],
 };
 
-type Common = { size?: 'sm' | 'md' | 'lg'; enter?: boolean; highlight?: boolean; delayMs?: number };
+type Common = { size?: 'sm' | 'md' | 'lg'; enter?: boolean; highlight?: boolean; dim?: boolean; delayMs?: number };
 type Props = (Common & { card: Card; back?: false }) | (Common & { back: true; card?: undefined });
 
 export function PlayingCard(props: Props) {
   const size = props.size ?? 'md';
-  const extra = `${props.enter ? ' card-enter' : ''}${props.highlight ? ' card-win' : ''}`;
+  const extra = `${props.enter ? ' card-enter' : ''}${props.highlight ? ' card-win' : ''}${props.dim ? ' card-dim' : ''}`;
   // Cards dealt together are staggered, so a flop reads as three cards landing
   // rather than one block of three.
   const style = props.delayMs ? { animationDelay: `${props.delayMs}ms` } : undefined;

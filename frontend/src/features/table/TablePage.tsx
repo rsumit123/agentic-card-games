@@ -9,7 +9,7 @@ import { Felt } from './Felt';
 import { ActionBar, type BarStatus } from './ActionBar';
 import { ConnectionPill } from './ConnectionPill';
 import { RecoveryNotice } from './RecoveryNotice';
-import { HandResult } from './HandResult';
+import { NextHandNote } from './NextHandNote';
 import { SessionLine } from './SessionLine';
 import { useSession } from '../../store/session';
 import { LeaveEndControls } from './LeaveEndControls';
@@ -126,7 +126,7 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
       <p>Your last move did not reach the table. Have another go.</p>
       <button type="button" className="btn" onClick={() => setDroppedAction(false)}>OK</button>
     </div>}
-    {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : <>
+    {session?.status === 'ended' || session?.status === 'cancelled' ? <SessionEnded status={session.status} rankings={session.final_rankings} mySeat={projection?.seat_id} /> : !projection ? <p aria-busy="true">Opening your seat…</p> : <>
       {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
       <Felt projection={projection} deadline={deadline} seatCount={view.seat_count} thinkingSeats={thinkingSeats}
         aiSeats={aiSeats} reactions={reactionBySeat} onReact={react} />
@@ -141,10 +141,10 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
         <WaitingNote name={waitingFor} isAi={turnSeat !== null && aiSeats.includes(turnSeat)}
           deadline={<DeadlineRing deadline={deadline} />} lastAction={lastAction} />
       )}
-      <HandResult pub={projection.public} mySeat={projection.seat_id}
-        holeCards={projection.hole_cards} handRank={projection.hand_rank}
-        revealDeadline={revealDeadline}
-        onNextHand={myUserId === hostId ? () => { void nextHand(view.id).catch(() => {}); } : null} />
+      {projection.public.street === 'complete' && (
+        <NextHandNote revealDeadline={revealDeadline}
+          onNextHand={myUserId === hostId ? () => { void nextHand(view.id).catch(() => {}); } : null} />
+      )}
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
         pot={projection.public.pot} bigBlind={projection.public.big_blind} waitingFor={waitingFor}
         deadline={myTurn ? <DeadlineRing deadline={deadline} /> : null}

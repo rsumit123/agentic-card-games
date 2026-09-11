@@ -5,7 +5,7 @@ test('create, seat a house player, start, act', async ({ page }) => {
   // Creating a table is a screen of its own now.
   await page.getByRole('link', { name: /Create a table/ }).click();
   await page.getByRole('button', { name: 'Create table' }).click();
-  await page.getByRole('button', { name: 'Play with an LLM' }).click();
+  await page.getByRole('button', { name: 'Add AI' }).click();
   await page.getByRole('menuitem', { name: /Easy/ }).click();
   await page.getByRole('button', { name: 'Start game' }).click();
   await expect(page.getByLabel('Table', { exact: true })).toBeVisible();
@@ -21,7 +21,7 @@ test('sizing a raise offers pot-fraction shortcuts', async ({ page }) => {
   // Creating a table is a screen of its own now.
   await page.getByRole('link', { name: /Create a table/ }).click();
   await page.getByRole('button', { name: 'Create table' }).click();
-  await page.getByRole('button', { name: 'Play with an LLM' }).click();
+  await page.getByRole('button', { name: 'Add AI' }).click();
   await page.getByRole('menuitem', { name: /Easy/ }).click();
   await page.getByRole('button', { name: 'Start game' }).click();
   // The sizes are on screen already: raising is one tap on a size, then Raise.

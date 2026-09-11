@@ -127,8 +127,22 @@ class RoomStore:
     def hash_room_code(code: str) -> str:
         return hashlib.sha256(code.encode("utf-8")).hexdigest()
 
-    def _new_room_code(self) -> str:
-        return secrets.token_urlsafe(12)
+    # A room code is read down a phone or typed by a friend, so it avoids the
+    # characters people confuse: no O or 0, no I, L or 1. Six of these is 729
+    # million codes, and only the live ones have to be unique.
+    ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+    ROOM_CODE_LENGTH = 6
+
+    def _new_room_code(self, session=None) -> str:
+        for _ in range(12):
+            code = "".join(secrets.choice(self.ROOM_CODE_ALPHABET) for _ in range(self.ROOM_CODE_LENGTH))
+            if session is None:
+                return code
+            taken = session.scalar(select(Table).where(Table.room_code_hash == self.hash_room_code(code)))
+            if taken is None:
+                return code
+        # Vanishingly unlikely, and a longer code beats refusing to open a table.
+        return secrets.token_urlsafe(9)
 
     def _check_rate_limit(self, code: str) -> None:
         key = self.hash_room_code(code)
@@ -204,7 +218,7 @@ class RoomStore:
         with self.session_factory() as session:
             if session.get(User, host_id) is None:
                 raise UnauthorizedJoin("host does not exist")
-            room_code = self._new_room_code()
+            room_code = self._new_room_code(session)
             table = Table(
                 host_user_id=host_id,
                 room_code_hash=self.hash_room_code(room_code),
@@ -318,6 +332,25 @@ class RoomStore:
             session.commit()
             return self._view(table)
 
+    def clear_ai_seat(self, user_id: int, table_id: int, seat_number: int) -> TableView:
+        """Send a house player away again, leaving the seat open for a person."""
+        with self.session_factory() as session:
+            table = self._get_table(session, table_id)
+            if table.host_user_id != user_id or table.status != TableStatus.LOBBY.value:
+                raise UnauthorizedJoin("only the lobby host can remove an AI seat")
+            seat = next((item for item in table.seats if item.seat_number == seat_number), None)
+            if seat is None or seat.seat_number > table.seat_count:
+                raise InvalidConfiguration("seat is not part of this table")
+            if seat.actor_type != "ai":
+                raise InvalidConfiguration("that seat does not hold a house player")
+            seat.actor_type = "human"
+            seat.ai_tier = None
+            seat.chip_count = 0
+            seat.is_funded = False
+            seat.present = False
+            session.commit()
+            return self._view(table)
+
     def fill_ai_seat(self, user_id: int, table_id: int, seat_number: int, tier: str) -> TableView:
         try:
             policy_for_tier(tier)
@@ -330,7 +363,9 @@ class RoomStore:
             seat = next((item for item in table.seats if item.seat_number == seat_number), None)
             if seat is None or seat.seat_number > table.seat_count:
                 raise InvalidConfiguration("seat is not part of this table")
-            if seat.user_id is not None or seat.actor_type == "ai":
+            # A seat that already holds a house player can change its mind about
+            # which model is sitting there; a seat with a person in it cannot.
+            if seat.user_id is not None:
                 raise TableClosed("seat is already occupied")
             seat.actor_type = "ai"
             seat.ai_tier = tier

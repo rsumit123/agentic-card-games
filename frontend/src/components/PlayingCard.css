@@ -3,6 +3,9 @@
 .card .card-ink { fill: var(--ink); }
 /* --ember is tuned for a dark ground; on ivory it only reaches 3.78:1. */
 .card[data-color="red"] .card-ink { fill: #A63B26; }
+/* At a showdown, the cards that took no part in the winning five stand back so
+   the ones that did can be seen at a glance. */
+.card-dim { opacity: 0.42; transition: opacity 260ms ease-out; }
 /* The five cards that actually won the pot. */
 .card-win { box-shadow: 0 0 0 3px var(--brass), 0 0 18px rgba(201, 162, 74, .55); }
 .card-enter { animation: card-flip 260ms cubic-bezier(.2,.7,.3,1) both; }

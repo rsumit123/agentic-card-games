@@ -367,3 +367,31 @@ def test_dealing_the_next_hand_mid_hand_changes_nothing(app_and_store):
     assert response.json()["detail"] == "no hand is waiting to be dealt"
     assert actor.revision == revision
     assert actor.state.street == "preflop"
+
+
+def test_a_room_code_is_short_enough_to_read_down_a_phone(app_and_store):
+    _, store = app_and_store
+    """Sixteen url-safe characters is a password, not something you say aloud."""
+    view = store.create_table(1, TableConfig(seat_count=2))
+    code = view.room_code
+    assert code is not None
+    assert len(code) == 6
+    # None of the characters people mistake for each other.
+    assert not set(code) & set("O0IL1")
+    assert store.join_table(2, code).id == view.id
+
+
+def test_the_host_can_change_or_send_away_a_house_player(app_and_store):
+    _, store = app_and_store
+    view = store.create_table(1, TableConfig(seat_count=2))
+    store.fill_ai_seat(1, view.id, 2, "Easy")
+    changed = store.fill_ai_seat(1, view.id, 2, "Hard")
+    seat = next(seat for seat in changed.seats if seat.seat_number == 2)
+    assert seat.ai_tier == "Hard"
+
+    cleared = store.clear_ai_seat(1, view.id, 2)
+    seat = next(seat for seat in cleared.seats if seat.seat_number == 2)
+    assert seat.actor_type == "human"
+    assert seat.ai_tier is None
+    # And the seat is open again for a person.
+    assert store.join_table(2, view.room_code).id == view.id

@@ -119,6 +119,20 @@ def fill_ai_seat(
         raise _error(exc) from exc
 
 
+@router.delete("/{table_id}/seats/{seat_number}/ai")
+def clear_ai_seat(
+    table_id: int,
+    seat_number: int,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_user),
+    _csrf: None = Depends(require_csrf),
+):
+    try:
+        return request.app.state.room_store.clear_ai_seat(user.id, table_id, seat_number)
+    except TableError as exc:
+        raise _error(exc) from exc
+
+
 @router.post("/{table_id}/leave")
 def leave_table(
     table_id: int,

@@ -188,7 +188,7 @@
 .seat-badge[data-lane='down'] .seat-bet { top: 100%; margin-top: 9px; left: 50%; transform: translateX(-50%); }
 .seat-badge[data-lane='up'] .seat-bet { bottom: 100%; margin-bottom: 9px; left: 50%; transform: translateX(-50%); }
 .seat-badge[data-lane='right'] .seat-bet { left: 100%; margin-left: 9px; top: 50%; transform: translateY(-50%); }
-.seat-badge[data-lane='left'] .seat-bet { right: 100%; left: auto; margin-right: 9px; top: 50%; transform: translateY(-50%); }
+.seat-badge[data-lane='left'] .seat-bet { right: 100%; left: auto; margin-right: 6px; top: 22%; transform: translateY(-50%); }
 
 /* A house player deciding looks exactly like a stuck table without this. */
 .seat-thinking { position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%); display: flex; gap: 4px; }
@@ -996,8 +996,8 @@ p.hand-result-next {
 /* ---- Waiting on somebody else ------------------------------------------- */
 .waiting-note {
   width: 100%;
-  margin-bottom: auto;
-  padding: 14px 10px 0;
+  margin: auto 0;
+  padding: 10px;
   display: grid;
   gap: 6px;
   justify-items: center;
@@ -1035,3 +1035,44 @@ p.hand-result-next {
 .waiting-dots i:nth-child(2) { animation-delay: 0.15s; }
 .waiting-dots i:nth-child(3) { animation-delay: 0.3s; }
 .waiting-last { margin: 0; font-size: 13px; color: var(--mist-dim); }
+
+/* ---- How a pot is won, said on the felt ---------------------------------- */
+.win-note {
+  position: absolute;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 5px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 162, 74, 0.45);
+  background: rgba(9, 17, 13, 0.9);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  text-align: center;
+  animation: win-note 320ms cubic-bezier(.2, .8, .3, 1) both;
+}
+.win-note b { font-family: var(--font-display); font-size: 19px; color: var(--brass); }
+.win-note span { font-size: 11px; color: var(--mist); }
+.win-note-mine { border-color: var(--brass); box-shadow: 0 0 22px rgba(201, 162, 74, 0.3); }
+@keyframes win-note {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)) scale(.94); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .win-note { animation: none; } }
+
+/* Dealing again, in the space the controls leave. */
+.next-hand {
+  width: min(100%, 320px);
+  margin: 0 auto;
+  min-height: 46px;
+  border: 1px solid rgba(79, 163, 122, 0.45);
+  background: var(--moss-deep);
+  color: var(--ivory);
+  font-size: 15px;
+}
+p.next-hand { display: grid; place-items: center; border-color: transparent; background: none; color: var(--mist-dim); font-size: 13px; }
+
+.session-ended { position: relative; }
+.session-won .hand-result-crown { display: block; text-align: center; }

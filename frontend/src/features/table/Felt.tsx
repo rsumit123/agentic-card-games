@@ -8,6 +8,7 @@ import { Pots } from './Pots';
 import { Reactions } from './Reactions';
 import { useRunout } from './useRunout';
 import { StreetLabel } from './StreetLabel';
+import { WinNote } from './WinNote';
 import './table.css';
 
 export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [], aiSeats = [], reactions = {}, onReact }: {
@@ -35,6 +36,9 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
       .flatMap((entry) => entry.best_five ?? [])
       .map((card) => `${card.rank}${card.suit}`),
   );
+  // Only at a showdown, and only once there is a five to compare against: on
+  // the flop every card would be "unused".
+  const showingWinner = complete && winningCards.size > 0;
 
   // Heads-up puts the dealer and small blind on one seat. Collect the badges per
   // seat and hand them to the seat itself, so they can never land on the cards.
@@ -61,6 +65,7 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
           const fresh = index >= board.cards.length - board.fresh;
           return <PlayingCard key={`${card.rank}${card.suit}${index}`} card={card} size="md"
             enter={fresh}
+            dim={showingWinner && !winningCards.has(`${card.rank}${card.suit}`)}
             // A flop arrives in one message. Dealing it left to right is the
             // difference between cards being dealt and cards appearing.
             delayMs={fresh ? (index - (board.cards.length - board.fresh)) * 90 : 0}
@@ -75,6 +80,7 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
         holeCards={player.seat_id === me ? hole_cards : null}
         revealed={revealedBySeat.get(player.seat_id) ?? null}
         won={winners.has(player.seat_id)}
+        winningCards={showingWinner ? winningCards : null}
         markers={markersBySeat.get(player.seat_id) ?? []} deadline={deadline}
         side={positions[player.seat_id].y < 50 ? 'top' : 'bottom'}
         lane={betLane(positions[player.seat_id])}
@@ -84,6 +90,11 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
       {/* On the rail, where a chip rack would be, rather than floating in the
           dark beside the table. */}
       {onReact && <Reactions onReact={onReact} />}
+      {/* Beside the seat that won it, not over the top of the game. */}
+      {complete && pub.payouts.length > 0 && positions[pub.payouts[0][0]] && (
+        <WinNote pub={pub} mySeat={me}
+          style={{ left: `${positions[pub.payouts[0][0]].x}%`, top: `${positions[pub.payouts[0][0]].y + (positions[pub.payouts[0][0]].y < 50 ? 18 : -20)}%` }} />
+      )}
     </div>
   </section>;
 }

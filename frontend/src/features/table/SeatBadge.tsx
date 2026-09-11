@@ -9,7 +9,7 @@ import { useCountdown } from './useCountdown';
  *  Your own chair is wide, with cards big enough to read at arm's length.
  *  Opponents are a narrow vertical token, because two of them have to sit
  *  side by side on a felt that is only about 320px wide in portrait. */
-export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction, said, holeCards, revealed, markers, deadline, side, lane = 'up', won, style }: {
+export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction, said, holeCards, revealed, markers, winningCards = null, deadline, side, lane = 'up', won, style }: {
   player: PublicPlayer;
   name: string | null;
   isMe: boolean;
@@ -21,6 +21,7 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
   holeCards: Card[] | null;
   revealed?: Card[] | null;
   markers: string[];
+  winningCards?: Set<string> | null;
   deadline: string | null;
   side: 'top' | 'bottom';
   lane?: 'up' | 'down' | 'left' | 'right';
@@ -59,7 +60,9 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
         <div className="seat-cards">
           {mucking && <span className="seat-muck" aria-hidden="true"><PlayingCard back size={isMe ? 'lg' : 'sm'} /><PlayingCard back size={isMe ? 'lg' : 'sm'} /></span>}
           {cards
-            ? cards.map((card, index) => <PlayingCard key={index} card={card} size={isMe ? 'lg' : 'sm'} />)
+            ? cards.map((card, index) => <PlayingCard key={index} card={card} size={isMe ? 'lg' : 'sm'}
+              highlight={!!winningCards?.has(`${card.rank}${card.suit}`)}
+              dim={!!winningCards && !winningCards.has(`${card.rank}${card.suit}`)} />)
             : !player.folded && <><PlayingCard back size={isMe ? 'lg' : 'sm'} /><PlayingCard back size={isMe ? 'lg' : 'sm'} /></>}
         </div>
         <div className="seat-info">

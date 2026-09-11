@@ -31,15 +31,28 @@ describe('setup', () => {
     mount();
     expect(screen.getByText('KLMN-2345')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start game/i })).toHaveAttribute('aria-disabled', 'true');
-    await userEvent.click(screen.getByRole('button', { name: /play with an llm/i }));
+    // An open seat is something to do: invite a person, or sit a model there.
+    await userEvent.click(screen.getByRole('button', { name: /add ai/i }));
     await userEvent.click(screen.getByRole('menuitem', { name: /medium/i }));
     expect(tier).toBe('Medium');
+  });
+
+  it('lets the host change or send away a house player', async () => {
+    useSession.setState({ status: 'authenticated', csrfToken: 'tok', user: { id: 1, google_subject: 'x', email: '', display_name: 'Ana' } });
+    let removed = false;
+    server.use(http.delete('http://localhost:8000/tables/9/seats/2/ai', () => { removed = true; return HttpResponse.json(base); }));
+    const seated: TableView = { ...base, seats: [base.seats[0], { ...base.seats[1], actor_type: 'ai', ai_tier: 'Medium', display_name: 'GPT-4o mini' }] };
+    render(<MemoryRouter><SetupPage view={seated} onStarted={() => {}} refresh={() => {}} /></MemoryRouter>);
+    expect(screen.getByText('GPT-4o mini')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /change or remove/i }));
+    await userEvent.click(screen.getByRole('menuitem', { name: /remove player/i }));
+    expect(removed).toBe(true);
   });
   it('hides host controls from guests', () => {
     useSession.setState({ status: 'authenticated', csrfToken: 'tok', user: { id: 2, google_subject: 'y', email: '', display_name: 'Bo' } });
     mount();
     expect(screen.queryByRole('button', { name: /start game/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /play with an llm/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /add ai/i })).toBeNull();
     expect(screen.getByText(/ask the host for the code/i)).toBeInTheDocument();
   });
 });
