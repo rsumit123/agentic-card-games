@@ -21,7 +21,9 @@ describe('hand result', () => {
     act(() => { FakeWebSocket.last().open(); FakeWebSocket.last().receive({ ...snap, revision: 4, payload: complete, deadline: null }); });
     // The panel holds back ~900ms so the cards turning over are seen first.
     await waitFor(() => expect(screen.getByRole('status', { name: 'Hand result' })).toHaveTextContent('Rivers (AI) wins 15'));
-    expect(screen.getByText('Hand complete')).toBeInTheDocument();
+    // The bar has nothing left to say once the hand is over: the result panel
+    // takes the space the controls were in, right under the table.
+    expect(screen.queryByText('Hand complete')).toBeNull();
   });
 
   it('replaces the result with the next deal on the following state event', async () => {

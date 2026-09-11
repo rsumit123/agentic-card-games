@@ -103,10 +103,19 @@
 .seat-active {
   border-color: var(--copper);
   box-shadow: 0 0 0 3px rgba(184, 118, 58, 0.26), 0 10px 22px rgba(0, 0, 0, 0.4);
+  animation: seat-pulse 2.4s ease-in-out infinite;
 }
+@keyframes seat-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(184, 118, 58, 0.22), 0 0 14px rgba(184, 118, 58, 0.12), 0 10px 22px rgba(0, 0, 0, 0.4); }
+  50% { box-shadow: 0 0 0 3px rgba(201, 162, 74, 0.42), 0 0 26px rgba(201, 162, 74, 0.3), 0 10px 22px rgba(0, 0, 0, 0.4); }
+}
+@media (prefers-reduced-motion: reduce) { .seat-active { animation: none; } }
 /* Dimming the whole badge took the word "folded" down to 2.3:1, so the state
    label keeps its own opacity. */
-.seat-folded { opacity: 0.5; }
+/* Ghosting a translucent badge left it barely readable: 50% of an already
+   see-through panel is nearly nothing. */
+.seat-folded { opacity: 0.62; }
+.seat-folded.seat-badge { background: rgba(9, 17, 13, 0.78); }
 .seat-folded .seat-state { opacity: 2; }
 .seat-won {
   border-color: var(--brass);
@@ -257,9 +266,20 @@
   width: 100%;
   /* Reserved whether or not there is anything to put in it. */
   min-height: var(--action-slot, 0px);
-  display: grid;
-  align-content: end;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
+/* The result sits at the top of that space, against the rail. */
+.result-inline { width: 100%; margin-bottom: auto; padding: 0 4px; display: grid; gap: 10px; justify-items: center; }
+.result-inline .hand-result {
+  max-height: none;
+  padding: 14px 16px 12px;
+  animation: result-in 260ms cubic-bezier(.2, .8, .3, 1) both;
+}
+.result-inline .hand-result-headline { margin: 0; font-size: 19px; }
+.result-inline .hand-result-showdown { margin-top: 10px; gap: 14px; }
+.result-inline .hand-result-next { margin-top: 0; }
 /* The bar's own auto margins would otherwise shrink it to the width of its
    widest row inside the slot. */
 .table-page > .action-slot > .action-bar { width: 100%; }
@@ -271,16 +291,22 @@
 .table-page { overflow-x: clip; }
 .table-page > .table-footer { flex: none; }
 
+/* A game's HUD rather than a site's toolbar: the brand is quieter than the
+   cards, and the controls sit together on the right instead of spreading the
+   whole bar out into four separate objects. */
 .table-header {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 0;
 }
+.table-header-controls { margin-left: auto; display: flex; gap: 6px; }
+.table-mark { margin-right: 7px; color: var(--brass); font-size: 0.9em; }
 .table-header .session-line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .table-header h1 { white-space: nowrap; }
-.table-header h1 { font-size: 21px; font-variation-settings: 'opsz' 60; }
+.table-header h1 { font-size: 19px; font-weight: 400; color: rgba(243, 236, 218, 0.82); font-variation-settings: 'opsz' 60; }
 .table-header p { margin: 0; font-size: 13px; color: var(--mist); }
 .table-header .pill { flex: none; }
 .session-line { margin: 0; font-size: 13px; color: var(--mist); }
@@ -587,9 +613,11 @@ p.hand-result-next { color: var(--brass); }
 /* ---- Phones ------------------------------------------------------------- */
 @media (max-width: 899px) {
   .table-page { padding: 10px 10px 0; }
-  .table-header { gap: 6px; }
-  .table-header h1 { font-size: 15px; }
-  .table-blinds { font-size: 12px; padding: 2px 7px; }
+  .table-header { gap: 6px; min-height: 40px; }
+  .table-header h1 { font-size: 16px; }
+  .table-blinds { font-size: 11px; padding: 1px 7px; }
+  /* Close to the rail: the table is the screen, not the title. */
+  .felt-wrap { padding-top: 0; }
   /* Connected is the boring case; on a phone it is a dot. */
   .pill[data-ok='true'] .pill-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .pill[data-ok='true'] { padding: 0; width: 14px; min-width: 14px; }

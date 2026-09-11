@@ -99,11 +99,13 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
   useTableSound({ myTurn, street: projection?.public.street ?? null, handComplete: projection?.public.street === 'complete', won: !!projection && projection.public.winners.includes(projection.seat_id) });
   return <main className="table-page">
     <header className="table-header">
-      <h1>The Common Table</h1>
+      <h1><span className="table-mark" aria-hidden="true">♠</span>The Common Table</h1>
       <p className="table-blinds tabular">{view.small_blind}/{view.big_blind}</p>
       <ConnectionPill status={connection} />
-      <IconButton label="Settings" onClick={() => setSheet('settings')}>⚙</IconButton>
-      <IconButton label="Table menu" onClick={() => setSheet('table')}>≡</IconButton>
+      <span className="table-header-controls">
+        <IconButton label="Settings" onClick={() => setSheet('settings')}>⚙</IconButton>
+        <IconButton label="Table menu" onClick={() => setSheet('table')}>≡</IconButton>
+      </span>
     </header>
 
     <SettingsSheet open={sheet === 'settings'} onClose={() => setSheet(null)} />
@@ -127,10 +129,6 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
       {recoveryNotice && <RecoveryNotice message={recoveryNotice} onDismiss={dismissNotice} />}
       <Felt projection={projection} deadline={deadline} seatCount={view.seat_count} thinkingSeats={thinkingSeats}
         aiSeats={aiSeats} reactions={reactionBySeat} onReact={react} />
-      <HandResult pub={projection.public} mySeat={projection.seat_id}
-        holeCards={projection.hole_cards} handRank={projection.hand_rank}
-        revealDeadline={revealDeadline}
-        onNextHand={myUserId === hostId ? () => { void nextHand(view.id).catch(() => {}); } : null} />
       {spectators.length > 0 && <ul className="spectators" aria-label="Spectators">{spectators.map((seat) => <li key={seat.seat_number}>{seat.display_name} · spectating</li>)}</ul>}
       {leaving.length > 0 && <p className="leaving" role="status">{leaving.join(' and ')} {leaving.length > 1 ? 'are' : 'is'} leaving after this hand.</p>}
       {sittingOutNames.length > 0 && <p className="leaving" role="status">{sittingOutNames.join(' and ')} sitting out.</p>}
@@ -138,6 +136,10 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
           felt grow into it made the whole table jump every time the turn
           passed. */}
       <div className="action-slot">
+      <HandResult pub={projection.public} mySeat={projection.seat_id}
+        holeCards={projection.hole_cards} handRank={projection.hand_rank}
+        revealDeadline={revealDeadline}
+        onNextHand={myUserId === hostId ? () => { void nextHand(view.id).catch(() => {}); } : null} />
       <ActionBar legal={projection.legal_actions} canAct={canAct()} onAct={send} status={status}
         pot={projection.public.pot} bigBlind={projection.public.big_blind} waitingFor={waitingFor}
         deadline={myTurn ? <DeadlineRing deadline={deadline} /> : null}

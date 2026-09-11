@@ -54,9 +54,10 @@ export function HandResult({ pub, mySeat, holeCards = null, handRank = null, rev
   const log = iWon ? (pub.actions ?? []).slice(-LOG_LINES) : [];
 
   return (
-    /* Winning is a moment and takes the screen; losing is information, and
-       leaves the board you lost on in view above it. */
-    <div className={`result-scrim ${iWon ? 'result-scrim-won' : 'result-scrim-lost'}`}>
+    /* Winning is a moment and takes the screen. Every other ending is
+       information, and belongs in the space the controls have just vacated,
+       hard under the table rather than adrift at the bottom of the screen. */
+    <div className={iWon ? 'result-scrim result-scrim-won' : 'result-inline'}>
       {iWon && <Confetti />}
       <div role="status" aria-label="Hand result" className={`hand-result ${iWon ? 'hand-result-won' : 'hand-result-lost'}`}>
         {iWon && <span className="hand-result-crown" aria-hidden="true">♛</span>}
