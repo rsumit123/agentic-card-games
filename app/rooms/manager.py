@@ -374,6 +374,11 @@ class RoomManager:
         self._persist_session_state(table_id, next_state)
         if next_state.status != "in_progress":
             self._reveal_deadlines.pop(table_id, None)
+            # The reads are this session's memory of these players. The table is
+            # over, so let them go rather than carry them for the life of the
+            # process; the actor and the final session state stay, because the
+            # players still have the finished table on screen.
+            self._opponent_reads.pop(table_id, None)
         self.publish_session(table_id)
 
     def _pending_leave_seats(self, table_id: int) -> tuple[int, ...]:

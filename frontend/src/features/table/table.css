@@ -430,8 +430,9 @@
   inset: 0;
   z-index: 20;
   display: grid;
-  place-items: center;
-  padding: 20px;
+  /* Sit low, so the board and the five cards that won stay in view above. */
+  place-items: end center;
+  padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
   background: rgba(6, 14, 10, 0.55);
   backdrop-filter: blur(2px);
   animation: scrim-in 240ms ease-out both;
