@@ -6,7 +6,7 @@ body {
   margin: 0;
   min-height: 100dvh;
   overscroll-behavior-y: contain;
-  background: var(--forest);
+  background: var(--room);
   color: var(--ivory);
   font-family: var(--font-sans);
   /* No font-size here: pinning it to px made the browser's own text-size
@@ -16,7 +16,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* The room's light: a brass lamp high on the right, the floor falling away below. */
+/* The room around the table: a dark card room with the lamp above, and chips
+   and glass catching it well out of focus. Drawn rather than photographed, so
+   it costs nothing to load and scales to any screen. */
 body::before {
   content: '';
   position: fixed;
@@ -24,8 +26,22 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(900px 560px at 84% -8%, rgba(201, 162, 74, 0.15), transparent 62%),
-    radial-gradient(760px 520px at 8% 106%, rgba(22, 63, 43, 0.5), transparent 62%);
+    radial-gradient(420px 300px at 12% 12%, rgba(201, 162, 74, 0.17), transparent 60%),
+    radial-gradient(300px 260px at 88% 6%, rgba(184, 118, 58, 0.15), transparent 62%),
+    radial-gradient(360px 300px at 92% 82%, rgba(201, 162, 74, 0.13), transparent 62%),
+    radial-gradient(280px 240px at 6% 88%, rgba(184, 118, 58, 0.12), transparent 62%),
+    radial-gradient(220px 200px at 50% 104%, rgba(79, 163, 122, 0.1), transparent 62%),
+    radial-gradient(900px 620px at 50% -10%, rgba(243, 236, 218, 0.05), transparent 60%);
+}
+
+/* The vignette that makes the felt the only lit thing in the room. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 42%, transparent 38%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 #root { position: relative; z-index: 1; }

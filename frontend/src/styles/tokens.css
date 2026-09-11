@@ -1,6 +1,8 @@
 :root {
   /* Room */
   --forest: #12211A;
+  /* The room itself is nearly black, so the felt is the lit thing in it. */
+  --room: #080C0A;
   --felt: #1F5B3B;
   --felt-deep: #163F2B;
   --walnut: #5A3A22;

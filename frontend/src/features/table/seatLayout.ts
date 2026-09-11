@@ -14,7 +14,7 @@ const SLOTS: Record<number, SeatSlot[]> = {
 
 /** Your own seat is always bottom centre, the way every portrait poker app
  *  does it, so your cards and the action bar sit in the same thumb arc. */
-export const HERO_SLOT: SeatSlot = { x: 50, y: 87 };
+export const HERO_SLOT: SeatSlot = { x: 50, y: 80 };
 
 /**
  * Lay out the table from the viewer's chair.

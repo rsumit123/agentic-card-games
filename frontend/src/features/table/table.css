@@ -15,9 +15,15 @@
   border-radius: 50% / 45%;
   background:
     var(--felt-grain),
-    radial-gradient(ellipse at center, var(--felt) 0%, var(--felt-deep) 85%);
+    radial-gradient(ellipse 70% 60% at 50% 42%, #2A7049 0%, var(--felt) 46%, var(--felt-deep) 88%);
   background-blend-mode: soft-light, normal;
-  box-shadow: 0 0 0 14px var(--walnut), 0 0 0 16px var(--walnut-light), 0 20px 40px rgba(0, 0, 0, 0.5);
+  /* A real rail is a hand's width of wood. The thin ring read as a border. */
+  box-shadow:
+    0 0 0 20px var(--walnut),
+    0 0 0 23px var(--walnut-light),
+    0 0 0 24px rgba(0, 0, 0, 0.45),
+    inset 0 0 60px rgba(0, 0, 0, 0.3),
+    0 26px 60px rgba(0, 0, 0, 0.6);
 }
 
 .pot {
@@ -68,8 +74,17 @@
 .seat-opponent .seat-name { font-size: 12px; max-width: 92px; }
 .seat-opponent .seat-stack { font-size: 15px; }
 
-.seat-hero .seat-main { display: flex; align-items: center; gap: 10px; }
+/* Your own chair reads top to bottom, the way you look at it: the cards you
+   are holding, then who you are and what you have left. */
+.seat-hero {
+  border-color: rgba(201, 162, 74, 0.55);
+  background: rgba(10, 18, 14, 0.92);
+}
+.seat-hero .seat-main { display: grid; justify-items: center; gap: 6px; }
 .seat-hero .seat-cards { gap: 5px; }
+.seat-hero .seat-info { justify-items: center; text-align: center; gap: 0; }
+.seat-hero .seat-name { font-size: 12px; letter-spacing: 0.02em; }
+.seat-hero .seat-stack { font-size: 20px; }
 
 .seat-active {
   border-color: var(--copper);
@@ -519,15 +534,28 @@ p.hand-result-next { color: var(--brass); }
      table options on a phone rather than squeezing the title. */
   .table-header .session-line { display: none; }
   .felt-wrap { padding: 6px 4px 8px; position: relative; }
-  .felt { aspect-ratio: 10 / 11.5; height: min(50svh, 440px); width: auto; border-radius: 45% / 50%; }
+  .felt {
+    aspect-ratio: 10 / 11.8;
+    height: min(58svh, 520px);
+    width: auto;
+    border-radius: 45% / 50%;
+    box-shadow:
+      0 0 0 14px var(--walnut),
+      0 0 0 16px var(--walnut-light),
+      0 0 0 17px rgba(0, 0, 0, 0.45),
+      inset 0 0 40px rgba(0, 0, 0, 0.3),
+      0 18px 40px rgba(0, 0, 0, 0.6);
+  }
   .pot { top: 36%; }
   .pot .chip span { font-size: 24px; }
   .community { top: 57%; gap: 3px; }
-  .community .card-md { width: 52px; }
+  /* The board is the reference the hero cards are read against, not the other
+     way round: keep it compact so the felt still reads as a table. */
+  .community .card-md { width: 46px; }
   .seat-badge { padding: 6px 8px; border-radius: 12px; }
   .seat-opponent { width: 100px; padding: 5px; }
-  .seat-opponent .seat-cards .card-sm { width: 40px; }
-  .seat-hero .seat-cards .card-lg { width: 72px; }
+  .seat-opponent .seat-cards .card-sm { width: 36px; }
+  .seat-hero .seat-cards .card-lg { width: 56px; }
   .seat-main { gap: 7px; }
   .seat-name { font-size: 12px; max-width: 96px; }
   .seat-stack { font-size: 15px; }
@@ -682,11 +710,12 @@ p.hand-result-next { color: var(--brass); }
 .seat-avatar {
   display: inline-grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
-  margin-right: 5px;
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
   border-radius: 50%;
-  background: var(--surface-2);
-  font-size: 10px;
-  vertical-align: -3px;
+  border: 1px solid rgba(201, 162, 74, 0.35);
+  background: radial-gradient(circle at 35% 30%, var(--surface-2), #0E1A13);
+  font-size: 13px;
+  vertical-align: -8px;
 }
