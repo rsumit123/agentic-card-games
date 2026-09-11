@@ -24,6 +24,7 @@ from .lifecycle import (
     leave_between_hands,
 )
 from .protocol import Ack
+from .reads import summarize, update_from_hand
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,10 @@ class RoomManager:
         self._ai_attempts: dict[tuple[int, int, int], int] = {}
         self._session_states: dict[int, SessionState] = {}
         self._reveal_deadlines: dict[int, datetime] = {}
+        # Per table, per seat: what that seat has shown about itself across the
+        # hands of this session. In memory only, and never sent to a human.
+        self._opponent_reads: dict[int, dict[int, dict[str, int]]] = {}
+        self._last_reaction: dict[tuple[int, int], datetime] = {}
         self._active_hand_ids: dict[int, int] = {}
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self.poll_interval = poll_interval
@@ -57,6 +62,30 @@ class RoomManager:
 
     def get(self, table_id: int) -> RoomActor | None:
         return self._actors.get(table_id)
+
+    def drop(self, table_id: int) -> None:
+        """Forget a table entirely, reads included.
+
+        The reads are a session's worth of memory about the players sitting at
+        it; a new table that happens to reuse the id must not inherit them.
+        """
+        self._actors.pop(table_id, None)
+        self._opponent_reads.pop(table_id, None)
+        self._ai_adapters.pop(table_id, None)
+        self._session_states.pop(table_id, None)
+        self._reveal_deadlines.pop(table_id, None)
+        self._active_hand_ids.pop(table_id, None)
+        self._ai_attempts = {key: count for key, count in self._ai_attempts.items() if key[0] != table_id}
+        self._ai_inflight = {key for key in self._ai_inflight if key[0] != table_id}
+        self._last_reaction = {key: when for key, when in self._last_reaction.items() if key[0] != table_id}
+
+    def opponent_reads(self, table_id: int, for_seat_id: int | None = None) -> dict[int, dict[str, object]]:
+        """How every other seat at this table has played, so far this session.
+
+        For the AI only. A human must never be handed a read on the player
+        across the table.
+        """
+        return summarize(self._opponent_reads.get(table_id, {}), for_seat_id)
 
     def connect(self, table_id: int, seat_id: int) -> asyncio.Queue:
         queue: asyncio.Queue = asyncio.Queue()
@@ -334,6 +363,8 @@ class RoomManager:
 
     def _after_transition(self, table_id: int, actor: RoomActor, before) -> None:
         if before.street != "complete" and actor.state.street == "complete":
+            # Before _complete_hand, which returns early without a database.
+            update_from_hand(self._opponent_reads.setdefault(table_id, {}), actor.state)
             self._complete_hand(table_id, actor)
 
     def _complete_hand(self, table_id: int, actor: RoomActor) -> None:
