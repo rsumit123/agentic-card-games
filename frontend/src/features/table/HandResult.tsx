@@ -3,7 +3,12 @@ import type { Card } from '../../domain/cards';
 import type { PublicState } from '../../domain/game';
 import { HAND_CATEGORY_LABELS } from '../../domain/game';
 import { PlayingCard } from '../../components/PlayingCard';
+import { describeAction } from './actionPhrase';
 import { useCountdown } from './useCountdown';
+
+/* A hand that went to the river with raises has a dozen entries and nobody
+   reads a dozen. The last few are the ones that decided it. */
+const LOG_LINES = 6;
 
 /** How the hand ended, over the felt.
  *
@@ -44,10 +49,18 @@ export function HandResult({ pub, mySeat, holeCards = null, handRank = null, rev
   });
 
 
+  // The log belongs to the win screen, which has the room for it. A loss keeps
+  // the board and the two hands in view instead.
+  const log = iWon ? (pub.actions ?? []).slice(-LOG_LINES) : [];
+
   return (
-    <div className="result-scrim">
+    /* Winning is a moment and takes the screen; losing is information, and
+       leaves the board you lost on in view above it. */
+    <div className={`result-scrim ${iWon ? 'result-scrim-won' : 'result-scrim-lost'}`}>
+      {iWon && <Confetti />}
       <div role="status" aria-label="Hand result" className={`hand-result ${iWon ? 'hand-result-won' : 'hand-result-lost'}`}>
         {iWon && <span className="hand-result-crown" aria-hidden="true">♛</span>}
+        {iWon && <p className="hand-result-title">You win</p>}
         {split && <p className="hand-result-split">Split pot</p>}
         {lines.map((line) => <p key={line} className="hand-result-headline">{line}</p>)}
         {showdown.length === 0 && <p className="hand-result-why">Everyone else folded.</p>}
@@ -76,12 +89,34 @@ export function HandResult({ pub, mySeat, holeCards = null, handRank = null, rev
           </ul>
         ) : null}
 
-        {seconds !== null && (
-          onNextHand
-            ? <button type="button" className="btn btn-primary hand-result-next" onClick={onNextHand}>Next hand ({seconds}s)</button>
-            : <p className="hand-result-next" role="presentation">Next hand in {seconds}s</p>
-        )}
       </div>
+
+      {/* How the hand actually went, which is the part you want after a pot is
+          pushed away from you. */}
+      {log.length > 0 && (
+        <ol className="hand-result-log" aria-label="How the hand went">
+          {log.map((action, index) => (
+            <li key={index}>
+              <span className="who">{seatName(action.seat_id)}</span>
+              <span className="did">{describeAction(action)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {seconds !== null && (
+        onNextHand
+          ? <button type="button" className="btn hand-result-next" onClick={onNextHand}>Next hand ({seconds}s)</button>
+          : <p className="hand-result-next" role="presentation">Next hand in {seconds}s</p>
+      )}
     </div>
   );
+}
+
+/** Paper over the winner, for the two seconds a win lasts. */
+function Confetti() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return null;
+  return <div className="confetti" aria-hidden="true">
+    {Array.from({ length: 14 }, (_, index) => <i key={index} style={{ left: `${(index * 7 + 4) % 100}%`, animationDelay: `${(index % 5) * 0.18}s` }} />)}
+  </div>;
 }

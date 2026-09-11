@@ -1,7 +1,7 @@
 import { chromium, devices } from '@playwright/test';
 const OUT = process.env.SHOT;
 const BASE = 'http://127.0.0.1:5173';
-const scenarios = ['seats4','seats3-waiting','urgent','sidepot','showdown','uncontested'];
+const scenarios = ['seats4','seats3-waiting','urgent','sidepot','showdown','uncontested','lost'];
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['Pixel 7'] });

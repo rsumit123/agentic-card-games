@@ -125,6 +125,34 @@ export const SCENARIOS: Record<string, { table: Partial<TableView>; snapshot: Sn
     }, [c(14, S), c(13, S)], [], 1, null),
   },
 
+  /* Losing a showdown, heads-up: the board stays in view and the hand is
+     compared against the one that beat it. */
+  'lost': {
+    table: { seat_count: 2 as never },
+    snapshot: snap({
+      street: 'complete', community_cards: [c(8, D), c(9, C), c(13, C), c(11, D), c(12, D)], pot: 0,
+      current_seat: null, names: { 1: 'You', 2: 'Gemini 3.7 Flash' },
+      dealer_seat: 1, small_blind_seat: 1, big_blind_seat: 2,
+      winners: [2], payouts: [[2, 380]],
+      showdown: [
+        { seat_id: 1, hole_cards: [c(3, C), c(7, S)], category: 'high_card', best_five: [] },
+        { seat_id: 2, hole_cards: [c(9, D), c(8, S)], category: 'two_pair', best_five: [c(9, C), c(9, D), c(8, D), c(8, S), c(13, C)] },
+      ],
+      actions: [
+        { seat_id: 2, street: 'flop', type: 'check' },
+        { seat_id: 1, street: 'flop', type: 'bet', amount: 40 },
+        { seat_id: 2, street: 'flop', type: 'call', amount: 40 },
+        { seat_id: 1, street: 'turn', type: 'bet', amount: 90 },
+        { seat_id: 2, street: 'turn', type: 'raise', amount: 190 },
+        { seat_id: 1, street: 'turn', type: 'call', amount: 190 },
+      ],
+      players: [
+        player({ seat_id: 1, stack: 810, contribution: 190 }),
+        player({ seat_id: 2, stack: 1190, contribution: 190 }),
+      ],
+    }, [c(3, C), c(7, S)], [], 1, null),
+  },
+
   /* Uncontested win: everyone folded, nothing shown. */
   'uncontested': {
     table: { seat_count: 2 as never },
@@ -132,6 +160,11 @@ export const SCENARIOS: Record<string, { table: Partial<TableView>; snapshot: Sn
       street: 'complete', community_cards: [], pot: 0, current_seat: null,
       names: { 1: 'You', 2: 'Gemini 3.7 Flash' }, dealer_seat: 1, small_blind_seat: 1, big_blind_seat: 2,
       winners: [1], payouts: [[1, 20]], showdown: [],
+      actions: [
+        { seat_id: 2, street: 'preflop', type: 'check' },
+        { seat_id: 1, street: 'preflop', type: 'bet', amount: 15 },
+        { seat_id: 2, street: 'preflop', type: 'fold' },
+      ],
       players: [
         player({ seat_id: 1, stack: 1010, contribution: 10 }),
         player({ seat_id: 2, stack: 990, folded: true, contribution: 10 }),
