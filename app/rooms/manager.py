@@ -313,6 +313,25 @@ class RoomManager:
         if paused:
             self._start_next_hand(table_id, actor)
 
+    def deal_next_hand(self, table_id: int, user_id: int) -> None:
+        """End the reveal window now and deal, at the host's word.
+
+        The table holds a finished hand on screen for a few seconds so everyone
+        can see how it ended. When the table has already seen enough, waiting
+        out the clock is just dead time.
+        """
+        actor = self._actors.get(table_id)
+        if actor is None:
+            raise LifecycleError("this table is not running")
+        state = self._session_states.get(table_id) or self._load_session_state(
+            table_id, actor.state.street != "complete"
+        )
+        if state.host_user_id != user_id:
+            raise LifecycleError("only the host can deal the next hand")
+        if self._reveal_deadlines.get(table_id) is None:
+            raise LifecycleError("no hand is waiting to be dealt")
+        self._start_next_hand(table_id, actor)
+
     def _set_sitting_out(self, table_id: int, user_id: int, sitting_out: bool) -> SessionState:
         actor = self._actors.get(table_id)
         state = self._session_states.get(table_id) or self._load_session_state(

@@ -313,3 +313,57 @@ def test_sit_out_and_sit_in_routes_mark_the_seat(app_and_store):
     assert seat.sitting_out is False
     assert stranger.status_code == 409
     assert stranger.json()["detail"] == "you are not seated at this table"
+
+
+def _cookie_for(user_id: int) -> str:
+    return TimestampSigner("development-only-change-me").sign(
+        base64.b64encode(json.dumps({"user_id": user_id, "csrf_token": "csrf"}).encode()).decode()
+    ).decode()
+
+
+def test_host_can_deal_the_next_hand_without_waiting_out_the_reveal(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+    store.join_table(2, created.room_code)
+    store.start_table(1, created.id)
+    manager = app.state.room_manager
+    actor = manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+    manager.submit(created.id, 1, {"expected_revision": 0, "idempotency_key": "fold", "action": {"type": "fold"}})
+    assert manager.reveal_deadline(created.id) is not None
+    hand_number = actor.state.hand_number
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as guest:
+        guest.cookies.set("session", _cookie_for(2))
+        not_the_host = guest.post(f"/tables/{created.id}/next-hand", headers={"X-CSRF-Token": "csrf"})
+    with TestClient(app) as client:
+        client.cookies.set("session", _cookie_for(1))
+        dealt = client.post(f"/tables/{created.id}/next-hand", headers={"X-CSRF-Token": "csrf"})
+
+    assert not_the_host.status_code == 409
+    assert dealt.status_code == 200
+    assert actor.state.hand_number == hand_number + 1
+    assert actor.state.street == "preflop"
+    assert manager.reveal_deadline(created.id) is None
+
+
+def test_dealing_the_next_hand_mid_hand_changes_nothing(app_and_store):
+    app, store = app_and_store
+    created = store.create_table(1, TableConfig(seat_count=2))
+    store.join_table(2, created.room_code)
+    store.start_table(1, created.id)
+    manager = app.state.room_manager
+    actor = manager.ensure_actor_for_table(created.id, app.state.session_factory, app.state.settings)
+    revision = actor.revision
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as client:
+        client.cookies.set("session", _cookie_for(1))
+        response = client.post(f"/tables/{created.id}/next-hand", headers={"X-CSRF-Token": "csrf"})
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "no hand is waiting to be dealt"
+    assert actor.revision == revision
+    assert actor.state.street == "preflop"
