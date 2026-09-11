@@ -23,7 +23,8 @@
 .pot {
   position: absolute;
   left: 50%;
-  top: 28%;
+  /* Clear of the seat on the far rail, which reaches down over the felt. */
+  top: 34%;
   transform: translate(-50%, -50%);
   text-align: center;
   color: var(--mist);
