@@ -140,7 +140,7 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
         lastAction={lastAction}
         error={lastError && lastError.code !== 'stale_revision' ? errorText(lastError) : null} />
 
-      <Sheet open={sheet === 'table'} title="Table" onClose={() => setSheet(null)}>
+      <Sheet open={sheet === 'table'} title="Table options" onClose={() => setSheet(null)}>
         <SessionLine hostUserId={hostId} hostSeatNumber={hostSeat} seats={session?.seats ?? []} myUserId={myUserId} />
         {leaving.length > 0 && <p className="leaving">{leaving.join(' and ')} {leaving.length > 1 ? 'are' : 'is'} leaving after this hand.</p>}
         {sittingOutNames.length > 0 && <p className="leaving">{sittingOutNames.join(' and ')} sitting out.</p>}

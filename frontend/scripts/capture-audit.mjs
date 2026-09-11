@@ -33,6 +33,17 @@ for (const s of scenarios) {
   console.log(JSON.stringify(box, null, 1));
 }
 
+// the home screen and the settings sheet
+await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(500);
+await page.screenshot({ path: `${OUT}/home.png` });
+const how = page.getByRole('button', { name: /How it works/ });
+if (await how.count()) { await how.click(); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/how.png` }); }
+
+await page.goto(`${BASE}/tables/7?scenario=showdown`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(1600);
+await page.screenshot({ path: `${OUT}/result-overlay.png` });
+
 // raise control open, 4 seats
 await page.goto(`${BASE}/tables/7?scenario=seats4`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(600);

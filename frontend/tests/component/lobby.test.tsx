@@ -18,6 +18,8 @@ describe('lobby', () => {
     let body: unknown;
     server.use(http.post('http://localhost:8000/tables', async ({ request }) => { body = await request.json(); return HttpResponse.json(view); }));
     mount();
+    // The forms sit behind the three choices on the home screen.
+    await userEvent.click(screen.getByRole('button', { name: /create a table/i }));
     await userEvent.selectOptions(screen.getByLabelText(/seats/i), '3');
     await userEvent.selectOptions(screen.getByLabelText(/starting chips/i), '5000');
     await userEvent.selectOptions(screen.getByLabelText(/blinds/i), '10');
@@ -26,9 +28,19 @@ describe('lobby', () => {
     expect(body).toEqual({ seat_count: 3, starting_chips: 5000, small_blind: 10, big_blind: 20 });
     expect(sessionStorage.getItem('room:9')).toBe('KLMN-2345');
   });
+  it('offers the three ways in, and explains the game to a first-time player', async () => {
+    mount();
+    expect(screen.getByRole('button', { name: /play now/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create a table/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /how it works/i }));
+    expect(screen.getByRole('heading', { name: /what beats what/i })).toBeInTheDocument();
+    expect(screen.getByText('Straight flush')).toBeInTheDocument();
+  });
+
   it('uppercases the join code and shows the server message on 410', async () => {
     server.use(http.post('http://localhost:8000/tables/join', () => HttpResponse.json({ detail: 'table has expired' }, { status: 410 })));
     mount();
+    await userEvent.click(screen.getByRole('button', { name: /play now/i }));
     const input = screen.getByLabelText(/room code/i);
     await userEvent.type(input, 'abcd-1234');
     expect(input).toHaveValue('ABCD-1234');
