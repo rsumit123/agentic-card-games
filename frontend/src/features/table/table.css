@@ -83,6 +83,7 @@
   padding: 6px;
   border-radius: 13px;
 }
+.seat-opponent.seat-active { padding-bottom: 14px; }
 .seat-opponent .seat-main { display: grid; justify-items: center; gap: 4px; }
 .seat-opponent .seat-info { justify-items: center; text-align: center; }
 .seat-opponent .seat-name { font-size: 11px; max-width: 96px; }
@@ -149,6 +150,7 @@
    line inside it, which is what made the opponent token too tall. */
 .seat-markers {
   position: absolute;
+  z-index: 4;
   top: -9px;
   right: -6px;
   display: flex;
@@ -170,8 +172,7 @@
 /* The chips a seat has pushed out sit between that seat and the pot. */
 .seat-bet {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  z-index: 2;
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--brass);
@@ -181,8 +182,13 @@
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
-.seat-badge[data-side='top'] .seat-bet { bottom: -11px; }
-.seat-badge[data-side='bottom'] .seat-bet { top: -11px; }
+/* The chips a seat has pushed out live outside it, in the direction of the
+   pot, with a gap. Sitting them over the badge put a bet on top of a stack the
+   moment a seat moved to a flank. */
+.seat-badge[data-lane='down'] .seat-bet { top: 100%; margin-top: 9px; left: 50%; transform: translateX(-50%); }
+.seat-badge[data-lane='up'] .seat-bet { bottom: 100%; margin-bottom: 9px; left: 50%; transform: translateX(-50%); }
+.seat-badge[data-lane='right'] .seat-bet { left: 100%; margin-left: 9px; top: 50%; transform: translateY(-50%); }
+.seat-badge[data-lane='left'] .seat-bet { right: 100%; left: auto; margin-right: 9px; top: 50%; transform: translateY(-50%); }
 
 /* A house player deciding looks exactly like a stuck table without this. */
 .seat-thinking { position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%); display: flex; gap: 4px; }
@@ -198,7 +204,16 @@
 .seat-thinking i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes seat-think { 0%, 100% { opacity: 0.28; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 
-.seat-timer { display: flex; align-items: center; gap: 7px; margin-top: 5px; opacity: 0.85; }
+.seat-timer {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  opacity: 0.9;
+}
 .seat-timer-track { flex: 1; height: 3px; border-radius: 2px; background: rgba(243, 236, 218, 0.14); overflow: hidden; }
 .seat-timer-bar {
   display: block;
@@ -665,6 +680,7 @@ p.hand-result-next { color: var(--brass); }
   .seat-hero .seat-name { font-size: 11px; }
   .seat-hero .seat-stack { font-size: 17px; }
   .seat-opponent { width: 104px; padding: 5px 6px; }
+  .seat-opponent.seat-active { padding-bottom: 13px; }
   .seat-opponent .seat-cards .card-sm { width: 32px; }
   .seat-hero .seat-cards .card-lg { width: 50px; }
   .seat-main { gap: 7px; }
@@ -697,8 +713,9 @@ p.hand-result-next { color: var(--brass); }
   position: absolute;
   z-index: 5;
   left: 50%;
-  /* Just under the board. At 73% it landed on the hero's own cards. */
-  top: 68%;
+  /* Over the board as it lands, and gone again. Below it, the pill crowded the
+     gap between the board and your own cards. */
+  top: 50%;
   transform: translate(-50%, -50%);
   padding: 4px 14px;
   border-radius: 999px;
@@ -708,7 +725,7 @@ p.hand-result-next { color: var(--brass); }
   font-size: 15px;
   letter-spacing: 0.04em;
   pointer-events: none;
-  animation: street-in 1400ms ease-out both;
+  animation: street-in 800ms ease-out both;
 }
 @keyframes street-in {
   0% { opacity: 0; transform: translate(-50%, -30%) scale(0.9); }
@@ -975,3 +992,46 @@ p.hand-result-next {
   .pot-kick .chip, .seat-muck, .seat-said { animation: none; }
   .seat-muck { display: none; }
 }
+
+/* ---- Waiting on somebody else ------------------------------------------- */
+.waiting-note {
+  width: 100%;
+  margin-bottom: auto;
+  padding: 14px 10px 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
+  animation: result-in 240ms ease-out both;
+}
+.waiting-line {
+  margin: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--mist);
+  white-space: nowrap;
+}
+.waiting-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 162, 74, 0.3);
+  background: radial-gradient(circle at 35% 30%, var(--surface-2), #0E1A13);
+  font-size: 13px;
+}
+.waiting-who { color: var(--ivory); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.waiting-verb { color: var(--mist-dim); }
+.waiting-dots { display: flex; gap: 4px; }
+.waiting-dots i {
+  width: 4px; height: 4px; border-radius: 50%; background: var(--brass);
+  animation: seat-think 1.1s ease-in-out infinite;
+}
+.waiting-dots i:nth-child(2) { animation-delay: 0.15s; }
+.waiting-dots i:nth-child(3) { animation-delay: 0.3s; }
+.waiting-last { margin: 0; font-size: 13px; color: var(--mist-dim); }

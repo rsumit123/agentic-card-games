@@ -9,7 +9,7 @@ import { useCountdown } from './useCountdown';
  *  Your own chair is wide, with cards big enough to read at arm's length.
  *  Opponents are a narrow vertical token, because two of them have to sit
  *  side by side on a felt that is only about 320px wide in portrait. */
-export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction, said, holeCards, revealed, markers, deadline, side, won, style }: {
+export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction, said, holeCards, revealed, markers, deadline, side, lane = 'up', won, style }: {
   player: PublicPlayer;
   name: string | null;
   isMe: boolean;
@@ -23,6 +23,7 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
   markers: string[];
   deadline: string | null;
   side: 'top' | 'bottom';
+  lane?: 'up' | 'down' | 'left' | 'right';
   won?: boolean;
   style: CSSProperties;
 }) {
@@ -50,6 +51,7 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
       style={style}
       data-seat={player.seat_id}
       data-side={side}
+      data-lane={lane}
       role="group"
       aria-label={`${label}, ${player.stack.toLocaleString()} chips${state ? `, ${state}` : ''}${active ? ', to act' : ''}`}
     >

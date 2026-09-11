@@ -76,7 +76,9 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
         revealed={revealedBySeat.get(player.seat_id) ?? null}
         won={winners.has(player.seat_id)}
         markers={markersBySeat.get(player.seat_id) ?? []} deadline={deadline}
-        side={positions[player.seat_id].y < 50 ? 'top' : 'bottom'} style={{ left: `${positions[player.seat_id].x}%`, top: `${positions[player.seat_id].y}%` }} />)}
+        side={positions[player.seat_id].y < 50 ? 'top' : 'bottom'}
+        lane={betLane(positions[player.seat_id])}
+        style={{ left: `${positions[player.seat_id].x}%`, top: `${positions[player.seat_id].y}%` }} />)}
       {flights.map((flight) => <ChipFlight key={flight.id} flight={flight} />)}
       {potHome && <ChipFlight key={`pot-${pub.hand_number ?? 0}`} flight={{ id: -1, from: POT_ANCHOR, amount: pub.payouts.reduce((total, [, amount]) => total + amount, 0) }} to={potHome} kind="award" />}
       {/* On the rail, where a chip rack would be, rather than floating in the
@@ -87,6 +89,17 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
 }
 
 const POT_ANCHOR = { x: 50, y: 36 };
+
+/** Which side of a seat its chips sit on: always the side facing the middle,
+ *  so a bet can never land on the stack, the cards or the name. */
+function betLane({ x, y }: { x: number; y: number }): 'up' | 'down' | 'left' | 'right' {
+  if (x < 35) return 'right';
+  if (x > 65) return 'left';
+  // Your own chips go beside your seat rather than in front of it: on a 390px
+  // screen the board is directly above the hero, and a chip in that gap lands
+  // on the cards.
+  return y < 50 ? 'down' : 'left';
+}
 
 /** The seat that has just checked, for a beat. Every other action arrives as
  *  chips crossing the felt; a check has nothing to show for itself. */

@@ -17,7 +17,7 @@ export function StreetLabel({ street, handNumber }: { street: Street; handNumber
     if (!name || previous.current === key) return;
     previous.current = key;
     setShown(name);
-    const timer = setTimeout(() => setShown(null), 1400);
+    const timer = setTimeout(() => setShown(null), 800);
     return () => clearTimeout(timer);
   }, [key, street]);
 

@@ -18,6 +18,7 @@ import { DeadlineRing } from './DeadlineRing';
 import { ActionFeed } from './ActionFeed';
 import { useTableSound } from './useTableSound';
 import { Sheet, IconButton } from './TableMenus';
+import { WaitingNote } from './WaitingNote';
 import { SettingsSheet } from './SettingsSheet';
 import { phraseFor } from './actionPhrase';
 
@@ -136,6 +137,10 @@ export function TablePage({ view, onLeft = () => window.location.assign('/') }: 
           felt grow into it made the whole table jump every time the turn
           passed. */}
       <div className="action-slot">
+      {status === 'waiting' && waitingFor && projection.public.street !== 'complete' && (
+        <WaitingNote name={waitingFor} isAi={turnSeat !== null && aiSeats.includes(turnSeat)}
+          deadline={<DeadlineRing deadline={deadline} />} lastAction={lastAction} />
+      )}
       <HandResult pub={projection.public} mySeat={projection.seat_id}
         holeCards={projection.hole_cards} handRank={projection.hand_rank}
         revealDeadline={revealDeadline}
