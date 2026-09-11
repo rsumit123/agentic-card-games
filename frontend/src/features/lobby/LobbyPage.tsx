@@ -37,17 +37,31 @@ export function LobbyPage() {
   return (
     <main className="lobby">
       <header className="lobby-header">
-        <div className="lobby-mark" aria-hidden="true">♠</div>
-        <h1>The Common Table</h1>
-        <p className="lobby-tagline">Play poker with friends and with language models.</p>
+        <div className="lobby-title">
+          <span className="lobby-mark" aria-hidden="true">♠</span>
+          <h1>The Common Table</h1>
+        </div>
+        <p className="lobby-tagline">Play poker with people and with language models.</p>
       </header>
+
+      {/* What the table can be, before the question of how to get to one. */}
+      <ul className="lobby-modes" aria-hidden="true">
+        <li><span className="mode-chip">♣</span>Real hands</li>
+        <li><span className="mode-chip">🤖</span>Play with LLMs</li>
+        <li><span className="mode-chip">⚡</span>Fast and fun</li>
+      </ul>
+
+      {/* The room, out of focus: chips under the lamp. */}
+      <div className="lobby-band" aria-hidden="true">
+        {Array.from({ length: 9 }, (_, index) => <i key={index} />)}
+      </div>
 
       {/* Three ways in, in the order a person wants them: join a game, start
           one, or find out what this is. */}
       <nav className="lobby-choices" aria-label="Get started">
         <button type="button" className="choice choice-primary" aria-expanded={panel === 'join'} onClick={() => toggle('join')}>
           <span className="choice-icon" aria-hidden="true">▶</span>
-          <span><b>Play now</b><small>Join with a room code</small></span>
+          <span><b>Play now</b><small>Join a table with a room code</small></span>
         </button>
         <button type="button" className="choice" aria-expanded={panel === 'create'} onClick={() => toggle('create')}>
           <span className="choice-icon" aria-hidden="true">＋</span>
@@ -64,6 +78,8 @@ export function LobbyPage() {
         {panel === 'create' && <CreateTableForm />}
         {panel === 'how' && <HowItWorks />}
       </section>
+
+      <p className="lobby-motto">"Same game. Different minds."</p>
 
       <footer className="lobby-foot">
         <p>Signed in as {user?.display_name}</p>

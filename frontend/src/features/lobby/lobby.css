@@ -68,10 +68,86 @@
 }
 
 /* ---- The way in --------------------------------------------------------- */
-.lobby-header { text-align: center; margin-bottom: 22px; }
-.lobby-mark { font-size: 34px; line-height: 1; color: var(--brass); }
-.lobby-header h1 { margin-top: 6px; font-size: clamp(28px, 8vw, 40px); font-variation-settings: 'opsz' 90; }
-.lobby-tagline { margin: 8px auto 0; max-width: 30ch; color: var(--mist); }
+.lobby-header { margin-bottom: 18px; }
+.lobby-title { display: flex; align-items: center; gap: 14px; }
+.lobby-mark { font-size: 40px; line-height: 1; color: var(--ivory); }
+.lobby-header h1 { font-size: clamp(28px, 8vw, 38px); font-variation-settings: 'opsz' 90; }
+.lobby-tagline { margin: 8px 0 0; max-width: 34ch; color: var(--mist); }
+
+/* Three kinds of table, as a row of marks rather than a paragraph. */
+.lobby-modes {
+  list-style: none;
+  display: flex;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 0;
+}
+.lobby-modes li {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mist);
+  text-align: center;
+}
+.mode-chip {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: radial-gradient(circle at 35% 28%, var(--surface-2), #0B140F);
+  font-size: 19px;
+  color: var(--brass);
+}
+
+/* The room the table is in, well out of focus: chips catching the lamp. */
+.lobby-band {
+  position: relative;
+  height: 120px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: radial-gradient(90% 130% at 50% 0%, #16281D, #050907 76%);
+}
+.lobby-band i {
+  position: absolute;
+  bottom: -14%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, rgba(243, 236, 218, 0.5), rgba(201, 162, 74, 0.55) 46%, rgba(92, 58, 22, 0.5));
+  filter: blur(5px);
+}
+/* Stacks at different depths: nearer ones bigger and softer. */
+.lobby-band i:nth-child(1) { left: 4%; width: 66px; height: 66px; filter: blur(8px); }
+.lobby-band i:nth-child(2) { left: 15%; bottom: 4%; width: 44px; height: 44px; filter: blur(3px); }
+.lobby-band i:nth-child(3) { left: 26%; bottom: 18%; width: 38px; height: 38px; background: radial-gradient(circle at 34% 30%, rgba(243, 236, 218, 0.42), rgba(184, 118, 58, 0.5) 48%, rgba(60, 30, 14, 0.5)); filter: blur(4px); }
+.lobby-band i:nth-child(4) { left: 38%; bottom: -6%; width: 72px; height: 72px; filter: blur(10px); }
+.lobby-band i:nth-child(5) { left: 50%; bottom: 14%; width: 40px; height: 40px; background: radial-gradient(circle at 34% 30%, rgba(243, 236, 218, 0.55), rgba(185, 198, 189, 0.32) 50%, rgba(20, 32, 24, 0.6)); filter: blur(3px); }
+.lobby-band i:nth-child(6) { left: 60%; bottom: -10%; width: 62px; height: 62px; filter: blur(7px); }
+.lobby-band i:nth-child(7) { left: 71%; bottom: 10%; width: 36px; height: 36px; background: radial-gradient(circle at 34% 30%, rgba(243, 236, 218, 0.4), rgba(79, 163, 122, 0.4) 50%, rgba(12, 34, 24, 0.6)); filter: blur(4px); }
+.lobby-band i:nth-child(8) { left: 82%; bottom: -4%; width: 58px; height: 58px; filter: blur(6px); }
+.lobby-band i:nth-child(9) { left: 92%; bottom: 20%; width: 46px; height: 46px; filter: blur(9px); }
+/* The lamp falls off towards the felt, so the top of the band goes dark. */
+.lobby-band::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 9, 7, 0.85) 0%, rgba(5, 9, 7, 0.1) 46%, rgba(5, 9, 7, 0.72) 100%);
+}
+
+.lobby-motto {
+  margin: 18px 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--mist-dim);
+}
 
 .lobby-choices { display: grid; gap: 10px; margin-bottom: 20px; }
 .choice {
@@ -102,8 +178,14 @@
   color: var(--brass);
   font-size: 17px;
 }
-.choice-primary { border-color: var(--copper); background: linear-gradient(180deg, rgba(184, 118, 58, 0.22), var(--surface)); }
-.choice-primary .choice-icon { background: var(--copper); color: var(--ink); }
+.choice-primary {
+  min-height: 76px;
+  border-color: rgba(79, 163, 122, 0.55);
+  background: linear-gradient(180deg, #2C7A54, var(--moss-deep));
+}
+.choice-primary b { font-size: 18px; }
+.choice-primary small { color: rgba(243, 236, 218, 0.78); }
+.choice-primary .choice-icon { border-radius: 12px; background: rgba(243, 236, 218, 0.92); color: var(--moss-deep); }
 .choice[aria-expanded='true'] { border-color: var(--brass); }
 
 .lobby-panel:empty { display: none; }
