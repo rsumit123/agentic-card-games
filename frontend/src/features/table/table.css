@@ -430,9 +430,11 @@
   inset: 0;
   z-index: 20;
   display: grid;
-  /* Sit low, so the board and the five cards that won stay in view above. */
+  /* Sit low, so the board and the five cards that won stay in view above, and
+     clear the action bar, which is still sticky at the bottom saying the hand
+     is complete. */
   place-items: end center;
-  padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
+  padding: 20px 20px calc(132px + env(safe-area-inset-bottom));
   background: rgba(6, 14, 10, 0.55);
   backdrop-filter: blur(2px);
   animation: scrim-in 240ms ease-out both;
