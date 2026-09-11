@@ -64,6 +64,11 @@ async def table_socket(websocket: WebSocket, table_id: int):
             if receive_task in done:
                 command = receive_task.result()
                 receive_task = asyncio.create_task(websocket.receive_json())
+                if isinstance(command, dict) and command.get("type") == "reaction":
+                    # Not a game command: it must never reach submit, and a
+                    # player who is not to act can still send one.
+                    manager.react(table_id, seat.seat_number, command.get("emoji"))
+                    continue
                 try:
                     legal_actions = actor.module.legal_actions(actor.state, seat.seat_number)
                 except KeyError:

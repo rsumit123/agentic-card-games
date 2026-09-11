@@ -28,6 +28,11 @@ from .reads import summarize, update_from_hand
 
 logger = logging.getLogger(__name__)
 
+# Six reactions, fixed on the server. A player is relaying this to everyone else
+# at the table, so the set is a list rather than anything they can type into.
+ALLOWED_REACTIONS = frozenset({"👍", "😂", "😮", "😤", "🎉", "🤔"})
+REACTION_INTERVAL_SECONDS = 2.0
+
 
 class RoomManager:
     def __init__(
@@ -110,6 +115,28 @@ class RoomManager:
             if seat_id == exclude_seat_id:
                 continue
             queue.put_nowait(event_factory(seat_id))
+
+    def react(self, table_id: int, seat_id: int, emoji: object) -> bool:
+        """Relay one emoji to everyone at the table, or quietly drop it.
+
+        Reactions are passed straight to other players, so only the six the
+        server knows are ever relayed: anything else would be a text channel
+        nobody asked for. A seat that spams them is silently held to one every
+        couple of seconds. Nothing here touches the game, the revision or a
+        deadline.
+        """
+        if emoji not in ALLOWED_REACTIONS:
+            return False
+        now = self._now()
+        last = self._last_reaction.get((table_id, seat_id))
+        if last is not None and (now - last).total_seconds() < REACTION_INTERVAL_SECONDS:
+            return False
+        self._last_reaction[(table_id, seat_id)] = now
+        self.publish(
+            table_id,
+            lambda _recipient_seat: {"type": "reaction", "seat_number": seat_id, "emoji": emoji},
+        )
+        return True
 
     def register_ai(self, table_id: int, seat_id: int, adapter: object) -> None:
         self._ai_adapters.setdefault(table_id, {})[seat_id] = adapter
