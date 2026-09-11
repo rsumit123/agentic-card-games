@@ -1,5 +1,21 @@
+import { useEffect, useRef, useState } from 'react';
 import type { PublicState } from '../../domain/game';
 import { Chip } from '../../components/Chip';
+
+/** True for a moment after the number changes. The pot growing is the only
+ *  feedback that a bet actually landed in the middle. */
+function useKick(value: number) {
+  const previous = useRef(value);
+  const [kicked, setKicked] = useState(false);
+  useEffect(() => {
+    if (previous.current === value) return;
+    previous.current = value;
+    setKicked(true);
+    const timer = setTimeout(() => setKicked(false), 320);
+    return () => clearTimeout(timer);
+  }, [value]);
+  return kicked;
+}
 
 /** The chips in the middle.
  *
@@ -8,6 +24,7 @@ import { Chip } from '../../components/Chip';
  *  number in that situation is wrong, not merely incomplete. */
 export function Pots({ pub }: { pub: PublicState }) {
   const seatName = (seat: number) => pub.names[seat] ?? `Seat ${seat}`;
+  const kicked = useKick(pub.pot);
 
   // Once the pot has been pushed to the winner there is nothing in the middle.
   if (pub.street === 'complete' && pub.pot === 0) return null;
@@ -19,7 +36,7 @@ export function Pots({ pub }: { pub: PublicState }) {
   const layers = someoneAllIn ? pub.pots ?? [] : [];
 
   if (layers.length < 2) {
-    return <div className="pot"><span>Pot</span><Chip amount={pub.pot} /></div>;
+    return <div className={`pot ${kicked ? 'pot-kick' : ''}`}><span>Pot</span><Chip amount={pub.pot} /></div>;
   }
 
   return <div className="pot pot-split" role="group" aria-label="Pots">

@@ -9,7 +9,10 @@ test('create, seat a house player, start, act', async ({ page }) => {
   await page.getByRole('button', { name: 'Start game' }).click();
   await expect(page.getByLabel('Table', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /^Call / }).click();
-  await expect(page.getByRole('status').filter({ hasText: /Waiting for/ })).toBeVisible();
+  // The turn has passed: the action row is gone entirely and the seat that owes
+  // the action is the thing saying so.
+  await expect(page.getByRole('button', { name: /^Call / })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: /to act/ })).toBeVisible();
 });
 
 test('sizing a raise offers pot-fraction shortcuts', async ({ page }) => {

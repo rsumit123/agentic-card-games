@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Card } from '../../domain/cards';
 import type { PublicPlayer } from '../../domain/game';
 import { PlayingCard } from '../../components/PlayingCard';
@@ -9,7 +9,7 @@ import { useCountdown } from './useCountdown';
  *  Your own chair is wide, with cards big enough to read at arm's length.
  *  Opponents are a narrow vertical token, because two of them have to sit
  *  side by side on a felt that is only about 320px wide in portrait. */
-export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction, holeCards, revealed, markers, deadline, side, won, style }: {
+export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction, said, holeCards, revealed, markers, deadline, side, won, style }: {
   player: PublicPlayer;
   name: string | null;
   isMe: boolean;
@@ -17,6 +17,7 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
   thinking?: boolean;
   isAi?: boolean;
   reaction?: string | null;
+  said?: string | null;
   holeCards: Card[] | null;
   revealed?: Card[] | null;
   markers: string[];
@@ -27,6 +28,9 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
 }) {
   const { seconds, fraction } = useCountdown(active ? deadline : null);
   const cards = holeCards ?? revealed ?? null;
+  // A fold used to make two cards vanish between frames. They now go where
+  // folded cards go: face down, towards the middle.
+  const mucking = useMuck(player.folded);
   const className = [
     'seat-badge',
     isMe ? 'seat-hero' : 'seat-opponent',
@@ -49,6 +53,7 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
     >
       <div className="seat-main">
         <div className="seat-cards">
+          {mucking && <span className="seat-muck" aria-hidden="true"><PlayingCard back size={isMe ? 'lg' : 'sm'} /><PlayingCard back size={isMe ? 'lg' : 'sm'} /></span>}
           {cards
             ? cards.map((card, index) => <PlayingCard key={index} card={card} size={isMe ? 'lg' : 'sm'} />)
             : !player.folded && <><PlayingCard back size={isMe ? 'lg' : 'sm'} /><PlayingCard back size={isMe ? 'lg' : 'sm'} /></>}
@@ -62,6 +67,8 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
           {state && <span className="seat-state">{state}</span>}
         </div>
       </div>
+
+      {said && <span className="seat-said" aria-hidden="true">{said}</span>}
 
       {reaction && <span className="seat-reaction" aria-hidden="true">{reaction}</span>}
 
@@ -87,4 +94,20 @@ export function SeatBadge({ player, name, isMe, active, thinking, isAi, reaction
       {active && thinking && <span className="seat-thinking seat-thinking-inline" aria-hidden="true"><i /><i /><i /></span>}
     </div>
   );
+}
+
+
+/** True for the third of a second after a seat folds. */
+function useMuck(folded: boolean) {
+  const previous = useRef(folded);
+  const [mucking, setMucking] = useState(false);
+  useEffect(() => {
+    if (previous.current === folded) return;
+    previous.current = folded;
+    if (!folded) return;
+    setMucking(true);
+    const timer = setTimeout(() => setMucking(false), 380);
+    return () => clearTimeout(timer);
+  }, [folded]);
+  return mucking;
 }

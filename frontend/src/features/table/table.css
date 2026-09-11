@@ -235,7 +235,10 @@
   display: flex;
   flex-direction: column;
 }
-.table-page > .action-bar { margin-top: auto; align-self: center; width: 100%; }
+.table-page > .action-bar { align-self: center; width: 100%; }
+/* The table grows into whatever the action area does not use, so the screen
+   never has a band of nothing in the middle of it. */
+.table-page > .felt-wrap { flex: 1; display: grid; place-items: center; }
 .table-page > .table-footer { flex: none; }
 
 .table-header {
@@ -557,7 +560,9 @@ p.hand-result-next { color: var(--brass); }
   .felt-wrap { padding: 6px 4px 8px; position: relative; }
   .felt {
     aspect-ratio: 10 / 11.8;
-    height: min(58svh, 520px);
+    height: 100%;
+    min-height: min(52svh, 460px);
+    max-height: min(70svh, 610px);
     width: auto;
     border-radius: 45% / 50%;
     box-shadow:
@@ -573,20 +578,27 @@ p.hand-result-next { color: var(--brass); }
   /* The board is the reference the hero cards are read against, not the other
      way round: keep it compact so the felt still reads as a table. */
   .community .card-md { width: 46px; }
-  .seat-badge { padding: 6px 8px; border-radius: 12px; }
+  .seat-badge { padding: 5px 7px; border-radius: 12px; }
+  .seat-hero { padding: 5px 8px 4px; }
+  .seat-hero .seat-main { gap: 3px; }
+  .seat-hero .seat-name { font-size: 11px; }
+  .seat-hero .seat-stack { font-size: 17px; }
   .seat-opponent { width: 100px; padding: 5px; }
   .seat-opponent .seat-cards .card-sm { width: 36px; }
-  .seat-hero .seat-cards .card-lg { width: 56px; }
+  .seat-hero .seat-cards .card-lg { width: 54px; }
   .seat-main { gap: 7px; }
   .seat-name { font-size: 12px; max-width: 96px; }
   .seat-stack { font-size: 15px; }
-  .action-bar { margin-top: 8px; padding: 12px 10px calc(14px + env(safe-area-inset-bottom)); }
-  .action-status { font-size: 17px; margin-bottom: 8px; }
+  .action-bar { margin-top: 8px; padding: 10px 10px calc(12px + env(safe-area-inset-bottom)); }
+  .action-status { font-size: 16px; margin-bottom: 6px; }
   .action-buttons { gap: 8px; }
   .action-buttons .btn { min-height: 52px; font-size: 15px; padding: 0 8px; }
+  .sizer { gap: 6px; margin-bottom: 8px; }
   .sizer-presets { gap: 5px; }
-  .sizer-preset { min-height: 46px; }
+  .sizer-preset { min-height: 40px; }
   .sizer-preset b { font-size: 13px; }
+  .sizer-slide { padding: 2px 10px; }
+  .sizer-range { height: 36px; }
   .leave-end .btn { min-height: 46px; }
   .action-buttons .btn { min-height: 50px; font-size: 15px; }
   .hand-result-headline { font-size: 19px; }
@@ -806,3 +818,55 @@ p.hand-result-next {
   100% { transform: translateY(90dvh) rotate(540deg); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+
+/* ---- Small motions ------------------------------------------------------ */
+/* The pot takes a breath when chips land in it. */
+.pot-kick .chip { animation: pot-kick 320ms cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes pot-kick {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* Folded cards go face down towards the middle rather than blinking out. */
+.seat-muck {
+  position: absolute;
+  display: flex;
+  gap: 3px;
+  pointer-events: none;
+  animation: muck 380ms ease-in both;
+}
+.seat-badge[data-side='bottom'] .seat-muck { animation-name: muck-up; }
+@keyframes muck { to { transform: translateY(38px) scale(0.82) rotate(4deg); opacity: 0; } }
+@keyframes muck-up { to { transform: translateY(-38px) scale(0.82) rotate(-4deg); opacity: 0; } }
+
+/* A check has no chips to show for itself, so it says so and goes. */
+.seat-said {
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 163, 122, 0.5);
+  background: rgba(12, 34, 24, 0.95);
+  color: var(--moss);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: said 1300ms ease-out both;
+}
+.seat-badge[data-side='top'] .seat-said { top: auto; bottom: -14px; }
+@keyframes said {
+  0% { opacity: 0; transform: translate(-50%, 6px); }
+  14% { opacity: 1; transform: translate(-50%, 0); }
+  78% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pot-kick .chip, .seat-muck, .seat-said { animation: none; }
+  .seat-muck { display: none; }
+}

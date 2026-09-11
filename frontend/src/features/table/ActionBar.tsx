@@ -64,6 +64,11 @@ export function ActionBar({ legal, canAct, onAct, status, error, deadline, pot, 
 
   const heading = status === 'waiting' && waitingFor ? `Waiting for ${waitingFor}` : STATUS_TEXT[status];
 
+  // Waiting on somebody else is not an action, and a bar saying so left a band
+  // of empty screen between the table and a line of text. The seat that owes
+  // the action is already lit, timed and thinking; the felt takes the room.
+  if (status === 'waiting' && !error) return null;
+
   return <section className="action-bar" aria-label="Actions">
     <div className="action-status" role="status">
       <span>{heading}</span>{deadline}

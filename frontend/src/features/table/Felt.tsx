@@ -25,6 +25,8 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
   // The server resolves an all-in in a single step. Dealing the board out over
   // a couple of seconds is the whole drama of the hand.
   const board = useRunout(pub.community_cards, pub.street);
+  // Checking moves no chips, so nothing on the felt said it had happened.
+  const checked = useJustChecked(pub.actions ?? []);
   const complete = pub.street === 'complete';
   const winners = new Set(pub.winners);
   const revealedBySeat = new Map(pub.showdown.map((entry) => [entry.seat_id, entry.hole_cards]));
@@ -64,6 +66,7 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
         thinking={thinkingSeats.includes(player.seat_id)}
         isAi={aiSeats.includes(player.seat_id)}
         reaction={reactions[player.seat_id] ?? null}
+        said={checked === player.seat_id ? 'Check' : null}
         holeCards={player.seat_id === me ? hole_cards : null}
         revealed={revealedBySeat.get(player.seat_id) ?? null}
         won={winners.has(player.seat_id)}
@@ -78,6 +81,22 @@ export function Felt({ projection, deadline = null, seatCount, thinkingSeats = [
 }
 
 const POT_ANCHOR = { x: 50, y: 36 };
+
+/** The seat that has just checked, for a beat. Every other action arrives as
+ *  chips crossing the felt; a check has nothing to show for itself. */
+function useJustChecked(actions: { seat_id: number; type: string }[]) {
+  const [seat, setSeat] = useState<number | null>(null);
+  const count = actions.length;
+  const last = actions[count - 1];
+  useEffect(() => {
+    if (!last || last.type !== 'check') { setSeat(null); return; }
+    setSeat(last.seat_id);
+    const timer = setTimeout(() => setSeat(null), 1300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count]);
+  return seat;
+}
 
 /** Spawn a chip whenever a seat's bet for this street grows. */
 function useChipFlights(bets: { seat: number; bet: number }[], positions: Record<number, { x: number; y: number }>) {

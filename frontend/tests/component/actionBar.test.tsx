@@ -62,15 +62,16 @@ describe('ActionBar', () => {
     expect(screen.queryByRole('button', { name: /All-in/ })).toBeNull();
   });
 
-  it('hides the sizer when it is not your turn', () => {
-    render(<ActionBar legal={[]} canAct={false} onAct={() => {}} status="waiting" waitingFor="Gemini 3.7 Flash" />);
-    expect(screen.queryByRole('group', { name: 'Bet size shortcuts' })).toBeNull();
-    expect(screen.getByText(/Waiting for Gemini 3.7 Flash/)).toBeInTheDocument();
+  it('takes up no room at all while the table waits on somebody else', () => {
+    // The seat that owes the action is lit, timed and thinking. A bar saying
+    // the same thing left a band of empty screen above it.
+    const { container } = render(<ActionBar legal={[]} canAct={false} onAct={() => {}} status="waiting" waitingFor="Gemini 3.7 Flash" lastAction="You bet 15" />);
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows what just happened while waiting', () => {
-    render(<ActionBar legal={[]} canAct={false} onAct={() => {}} status="waiting" lastAction="You bet 15" />);
-    expect(screen.getByText('You bet 15')).toBeInTheDocument();
+  it('still speaks up while waiting if something went wrong', () => {
+    render(<ActionBar legal={[]} canAct={false} onAct={() => {}} status="waiting" error="That move is no longer available." />);
+    expect(screen.getByRole('alert')).toHaveTextContent('no longer available');
   });
 
   it('shows a rejection message', () => {
