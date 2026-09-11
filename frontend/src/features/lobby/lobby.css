@@ -65,7 +65,8 @@
 
 @media (max-width: 820px) {
   .lobby { padding: 28px 20px 56px; }
-  
+}
+
 /* ---- The way in --------------------------------------------------------- */
 .lobby-header { text-align: center; margin-bottom: 22px; }
 .lobby-mark { font-size: 34px; line-height: 1; color: var(--brass); }
